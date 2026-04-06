@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/dashboard-layout :: html(content=~{::page-content}, styles=~{dashboard/hr :: custom-styles}, scripts=~{::custom-scripts})}"
+      lang="vi">
+<head>
+    <title>HR - Nhân viên</title>
+</head>
+<body>
+
+<th:block th:fragment="page-content">
+
+    <div class="hr-banner">
+        <div class="hb-left">
+            <h2><i class="fa-solid fa-users" style="margin-right:8px;opacity:.8"></i>Quản lý nhân viên</h2>
+            <p>Thêm/sửa/xóa nhân viên và cập nhật trạng thái hoạt động.</p>
+            <div class="hb-date" id="dateTime">...</div>
+        </div>
+    </div>
+
+    <th:block th:replace="~{fragments/hr-subnav :: subnav}"></th:block>
+
+    <div class="card" style="margin-bottom:24px">
+        <div class="card-hd" style="margin-bottom:12px">
+            <div class="card-title"><i class="fa-solid fa-users" style="color:var(--hr);margin-right:6px"></i>Quản lý nhân viên</div>
+            <button class="btn-confirm-reject"
+                    style="background:var(--hr);color:#fff;padding:8px 12px;font-size:12px;border-radius:8px;border:none;cursor:pointer"
+                    onclick="openEmployeeModal('new')">
+                + Thêm NV
+            </button>
+        </div>
+
+        <table class="rank-table" style="width:100%;">
+            <thead>
+            <tr>
+                <th style="width:20px">#</th>
+                <th>ID</th>
+                <th>Họ tên</th>
+                <th>Phòng ban</th>
+                <th>Chức vụ</th>
+                <th>Trạng thái</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody id="hrEmployeeBody">
+            <tr>
+                <td colspan="7">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-spinner fa-spin"></i>
+                        <p>Đang tải dữ liệu nhân sự...</p>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ── HR Employee CRUD Modal ── -->
+    <div class="modal-overlay" id="employeeModal">
+        <div class="modal-box">
+            <div class="modal-title">
+                <i class="fa-solid fa-user-plus" style="color:var(--hr);margin-right:7px"></i>
+                <span id="employeeModalTitle">Thêm nhân viên</span>
+            </div>
+            <div class="modal-sub" id="employeeModalSub">Nhập thông tin và lưu</div>
+
+            <input id="emp-id" class="modal-textarea" placeholder="ID" style="margin-bottom:10px" />
+            <input id="emp-name" class="modal-textarea" placeholder="Họ và tên" style="margin-bottom:10px" />
+            <input id="emp-phone" class="modal-textarea" placeholder="Số điện thoại" style="margin-bottom:10px" />
+            <input id="emp-email" class="modal-textarea" placeholder="Email công việc" style="margin-bottom:10px" />
+            <input id="emp-status" class="modal-textarea" placeholder="Trạng thái (DANG_LAM_VIEC/NGHI_VIEC)" style="margin-bottom:10px" />
+            <input id="emp-leave" class="modal-textarea" placeholder="Số phép còn lại" style="margin-bottom:10px" />
+            <label class="modal-sub" style="display:block;margin-bottom:4px">Bảng lương</label>
+            <select id="emp-bangLuong" class="modal-textarea" style="margin-bottom:14px;width:100%;box-sizing:border-box">
+                <option value="">— Không gán —</option>
+            </select>
+
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeEmployeeModal()">Hủy</button>
+                <button class="btn-confirm-reject" onclick="saveEmployee()">
+                    <i class="fa-solid fa-save"></i> Lưu
+                </button>
+            </div>
+        </div>
+    </div>
+
+</th:block>
+
+<script th:fragment="custom-scripts">
+    function tick() {
+        const d = new Date();
+        const days = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
+        const str = days[d.getDay()] + ', ' +
+            String(d.getDate()).padStart(2,'0') + '/' +
+            String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear() +
+            ' — ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+        document.getElementById('dateTime').textContent = str;
+    }
+
+    /* ── Helper: API fetch với auth ── */
+    async function apiFetch(url, options = {}) {
+        const defaultOptions = {
+            headers: getAuthHeaders(),
+            ...options
+        };
+        const response = await fetch(url, defaultOptions);
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        return response;
+    }
+
+    async function apiFetchJson(url, options = {}) {
+        return (await apiFetch(url, options)).json();
+    }
+
+    /* ── HR Employee CRUD ── */
+    let hrEmployees = [];
+    let hrEmployeeMode = 'new';
+    let __bangLuongOptions = [];
+
+    function formatMoney(n) {
+        if (n === null || n === undefined || Number.isNaN(Number(n))) return '—';
+        return Number(n).toLocaleString('vi-VN') + 'đ';
+    }
+
+    async function loadBangLuongOptions(selectedBangLuongId) {
+        const sel = document.getElementById('emp-bangLuong');
+        if (!sel) return;
+        sel.innerHTML = '<option value="">— Không gán —</option>';
+        __bangLuongOptions = [];
+
+        try {
+            const list = await apiFetchJson('/api/payroll/structure');
+            __bangLuongOptions = list || [];
+            __bangLuongOptions.forEach(bl => {
+                const cb = formatMoney(bl.luongCoBan);
+                const pc = formatMoney(bl.phuCapDinhMuc);
+                const label = `${bl.id || '—'} — ${bl.tenChucVu || '—'} (${cb} + ${pc})`;
+                sel.appendChild(new Option(label, bl.id || ''));
+            });
+        } catch (e) {
+            console.warn('loadBangLuongOptions error:', e);
+        }
+
+        const target = selectedBangLuongId || '';
+        sel.value = target;
+    }
+
+    async function loadHrEmployees() {
+        const tbody = document.getElementById('hrEmployeeBody');
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>Đang tải nhân sự...</p></div></td></tr>`;
+        try {
+            hrEmployees = await apiFetchJson('/api/dashboard/hr/employees');
+            renderHrEmployees(hrEmployees);
+        } catch (e) {
+            console.error('loadHrEmployees error:', e);
+            tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-triangle-exclamation" style="color:var(--err);opacity:.5"></i><p>Lỗi tải dữ liệu nhân sự</p></div></td></tr>`;
+        }
+    }
+
+    function renderHrEmployees(list) {
+        const tbody = document.getElementById('hrEmployeeBody');
+        if (!list || list.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-circle-check" style="color:var(--ok);opacity:.5"></i><p>Chưa có nhân viên đăng ký</p></div></td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = list.map((nv, i) => `
+            <tr>
+                <td>${i+1}</td>
+                <td>${nv.id || '—'}</td>
+                <td>${nv.hoTen || '—'}</td>
+                <td>${nv.phongBan?.tenPhongBan || nv.tenPhong || '—'}</td>
+                <td>${nv.chucVu?.tenChucVu || nv.chucVu || '—'}</td>
+                <td>${nv.trangThaiHoatDong || '—'}</td>
+                <td>
+                    <button class="qa-approve" style="font-size:11px;padding:4px 8px;" onclick="openEmployeeModal('edit', '${String(nv.id || '').replace(/'/g, "\\'")}')">Sửa</button>
+                    <button class="qa-approve" style="font-size:11px;padding:4px 8px;background:var(--inf);color:#fff" onclick="goEmployeeProfile('${String(nv.id || '').replace(/'/g, "\\'")}')">Hồ sơ</button>
+                    <button class="qa-reject" style="font-size:11px;padding:4px 8px;" onclick="deleteEmployee('${String(nv.id || '').replace(/'/g, "\\'")}')">Xóa</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function goEmployeeProfile(id) {
+        if (!id) return;
+        const token = getJwtToken();
+        const url = new URL('/dashboard/hr/employees/profile', window.location.origin);
+        url.searchParams.set('id', id);
+        if (token && token !== 'null' && token !== 'undefined') {
+            url.searchParams.set('access_token', token);
+        }
+        window.location.href = url.pathname + url.search;
+    }
+
+    async function openEmployeeModal(mode, id) {
+        hrEmployeeMode = mode;
+        const modal = document.getElementById('employeeModal');
+
+        const title = document.getElementById('employeeModalTitle');
+        const sub = document.getElementById('employeeModalSub');
+
+        const idField = document.getElementById('emp-id');
+        const nameField = document.getElementById('emp-name');
+        const phoneField = document.getElementById('emp-phone');
+        const emailField = document.getElementById('emp-email');
+        const statField = document.getElementById('emp-status');
+        const leaveField = document.getElementById('emp-leave');
+
+        const selectedBangLuongId = mode === 'edit'
+            ? (hrEmployees.find(x => x.id === id)?.bangLuong?.id || '')
+            : '';
+
+        if (mode === 'edit') {
+            const nv = hrEmployees.find(x => x.id === id);
+            if (!nv) return;
+
+            title.textContent = 'Cập nhật nhân viên';
+            sub.textContent = `Sửa thông tin: ${nv.hoTen || nv.id}`;
+
+            idField.value = nv.id || '';
+            idField.disabled = true;
+
+            nameField.value = nv.hoTen || '';
+            phoneField.value = nv.soDienThoai || '';
+            emailField.value = nv.emailCongViec || '';
+            statField.value = nv.trangThaiHoatDong || '';
+            leaveField.value = nv.soNgayPhepConLai != null ? nv.soNgayPhepConLai : '';
+        } else {
+            title.textContent = 'Thêm nhân viên';
+            sub.textContent = 'Nhập thông tin và lưu';
+
+            idField.disabled = false;
+            idField.value = '';
+            nameField.value = '';
+            phoneField.value = '';
+            emailField.value = '';
+
+            statField.value = 'DANG_LAM_VIEC';
+            leaveField.value = '12';
+        }
+
+        // Load options bảng lương và pre-select
+        await loadBangLuongOptions(selectedBangLuongId);
+
+        modal.classList.add('show');
+    }
+
+    function closeEmployeeModal() {
+        document.getElementById('employeeModal').classList.remove('show');
+    }
+
+    async function saveEmployee() {
+        const id = document.getElementById('emp-id').value.trim();
+        const hoTen = document.getElementById('emp-name').value.trim();
+        const soDienThoai = document.getElementById('emp-phone').value.trim();
+        const emailCongViec = document.getElementById('emp-email').value.trim();
+        const trangThaiHoatDong = document.getElementById('emp-status').value.trim() || 'DANG_LAM_VIEC';
+        const soNgayPhepConLai = Number(document.getElementById('emp-leave').value.trim() || '12');
+        const bangLuongIdRaw = document.getElementById('emp-bangLuong').value;
+        const bangLuongId = bangLuongIdRaw ? bangLuongIdRaw : null;
+
+        if (!id || !hoTen) {
+            toast('ID và Họ tên là bắt buộc', 'warning');
+            return;
+        }
+
+        const payload = { id, hoTen, soDienThoai, emailCongViec, trangThaiHoatDong, soNgayPhepConLai };
+
+        try {
+            const url = hrEmployeeMode === 'edit'
+                ? `/api/dashboard/hr/employees/${encodeURIComponent(id)}`
+                : '/api/dashboard/hr/employees';
+            const method = hrEmployeeMode === 'edit' ? 'PUT' : 'POST';
+
+            await apiFetch(url, { method, body: JSON.stringify(payload) });
+
+            // Gán bảng lương theo nghiệp vụ độc lập
+            await apiFetch(`/api/employees/${encodeURIComponent(id)}/bang-luong`, {
+                method: 'PUT',
+                body: JSON.stringify({ bangLuongId })
+            });
+
+            await loadHrEmployees();
+
+            toast('Lưu nhân viên thành công', 'success');
+            closeEmployeeModal();
+        } catch (e) {
+            console.error('saveEmployee error:', e);
+            toast('Lưu nhân viên thất bại', 'warning');
+        }
+    }
+
+    async function deleteEmployee(id) {
+        if (!confirm('Xác nhận xóa nhân viên ' + id + ' ?')) return;
+        try {
+            await apiFetch(`/api/dashboard/hr/employees/${encodeURIComponent(id)}`, { method: 'DELETE' });
+            await loadHrEmployees();
+            toast('Xóa nhân viên thành công', 'success');
+        } catch (e) {
+            console.error('deleteEmployee error:', e);
+            toast('Xóa nhân viên lỗi', 'warning');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        tick();
+        loadHrEmployees();
+        const p = new URLSearchParams(window.location.search);
+        if (p.get('new') === '1') {
+            openEmployeeModal('new');
+            window.history.replaceState({}, '', '/dashboard/hr/employees');
+        }
+    });
+</script>
+
+</body>
+</html>
+

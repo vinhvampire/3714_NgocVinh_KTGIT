@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      th:replace="~{layouts/dashboard-layout :: html(content=~{::page-content}, styles=~{::custom-styles}, scripts=~{::custom-scripts})}" 
+      lang="vi">
+<head>
+    <title>Chấm Công Của Tôi</title>
+</head>
+
+<body>
+
+<th:block th:fragment="page-content">
+
+    <div class="container">
+
+        <!-- Statistics Header -->
+        <div class="card-grid">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <h4>Đúng Giờ</h4>
+                    <h2 id="on-time-count">18</h2>
+                    <p>/ tháng này</p>
+                </div>
+            </div>
+
+            <div class="stat-card" style="border-left-color: #F59E0B;">
+                <div class="stat-icon" style="background: #FFFBEB; color: #F59E0B;">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-content">
+                    <h4>Đi Muộn</h4>
+                    <h2 id="late-count">2</h2>
+                    <p>/ tháng này</p>
+                </div>
+            </div>
+
+            <div class="stat-card" style="border-left-color: #EF4444;">
+                <div class="stat-icon" style="background: #FEF2F2; color: #EF4444;">
+                    <i class="fas fa-times-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <h4>Vắng Mặt</h4>
+                    <h2 id="absent-count">0</h2>
+                    <p>/ tháng này</p>
+                </div>
+            </div>
+
+            <div class="stat-card" style="border-left-color: #3B82F6;">
+                <div class="stat-icon" style="background: #EFF6FF; color: #3B82F6;">
+                    <i class="fas fa-calendar"></i>
+                </div>
+                <div class="stat-content">
+                    <h4>Nghỉ Phép</h4>
+                    <h2 id="leave-count">1</h2>
+                    <p>/ tháng này</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Attendance Trend Chart -->
+        <div class="chart-wrapper">
+            <h3>
+                <i class="fas fa-chart-line"></i>
+                Xu Hướng Chuyên Cần — 6 Tháng Gần Đây
+            </h3>
+            <div class="chart-container">
+                <canvas id="attendanceChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Attendance History Table -->
+        <div class="table-wrapper">
+            <div class="table-header">
+                <h3>
+                    <i class="fas fa-list"></i>
+                    Lịch Sử Chấm Công
+                </h3>
+            </div>
+            <div class="emp-toolbar">
+                <label class="emp-toolbar-label">Tháng</label>
+                <select class="filter-select" id="monthFilter" title="Chọn tháng (theo server)"></select>
+                <label class="emp-toolbar-label">Trạng thái</label>
+                <select class="filter-select" id="statusFilter" onchange="onAttendanceFiltersChange()">
+                    <option value="">Tất cả</option>
+                    <option value="DI_LAM">Đúng giờ</option>
+                    <option value="DI_MUON">Đi muộn</option>
+                    <option value="NGHI_PHEP">Nghỉ phép</option>
+                    <option value="PHEP">Phép</option>
+                    <option value="DI_NGHI">Nghỉ</option>
+                </select>
+                <label class="emp-toolbar-label">Sắp xếp</label>
+                <select class="filter-select" id="sortAttendance" onchange="onAttendanceFiltersChange()">
+                    <option value="ngay_desc">Ngày mới → cũ</option>
+                    <option value="ngay_asc">Ngày cũ → mới</option>
+                    <option value="status">Trạng thái (A→Z)</option>
+                </select>
+                <label class="emp-toolbar-label">/ trang</label>
+                <select class="filter-select" id="pageSizeAttendance" onchange="onAttendanceFiltersChange()">
+                    <option value="5">5</option>
+                    <option value="10" selected>10</option>
+                    <option value="20">20</option>
+                </select>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Ngày</th>
+                        <th>Giờ Vào</th>
+                        <th>Giờ Ra</th>
+                        <th>Trạng Thái</th>
+                        <th>Ghi Chú</th>
+                    </tr>
+                </thead>
+                <tbody id="attendanceTable">
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: #6B7280; padding: 18px;">Loading dữ liệu chấm công...</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="emp-pagination" id="attendancePagination"></div>
+        </div>
+
+    </div>
+
+</th:block>
+
+<style th:fragment="custom-styles">
+    .container { max-width: 100%; }
+
+    /* Header Cards */
+    .card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .stat-card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        box-shadow: 0 2px 12px rgba(0,0,0,.07);
+        border-left: 4px solid #FF6B35;
+    }
+
+    .stat-icon {
+        width: 56px;
+        height: 56px;
+        background: #FFF0EB;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        color: #FF6B35;
+    }
+
+    .stat-content h4 {
+        font-size: 12px;
+        font-weight: 700;
+        color: #6B7280;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+    }
+
+    .stat-content h2 {
+        font-size: 24px;
+        font-weight: 800;
+        color: #1F2937;
+        margin: 0;
+    }
+
+    .stat-content p {
+        font-size: 12px;
+        color: #9CA3AF;
+        margin-top: 4px;
+    }
+
+    /* Chart Container */
+    .chart-wrapper {
+        background: #fff;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: 0 2px 12px rgba(0,0,0,.07);
+    }
+
+    .chart-wrapper h3 {
+        font-size: 15px;
+        font-weight: 800;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .chart-wrapper h3 i {
+        color: #FF6B35;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 300px;
+    }
+
+    /* Attendance Table */
+    .table-wrapper {
+        background: #fff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 12px rgba(0,0,0,.07);
+        margin-bottom: 24px;
+    }
+
+    .table-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid #E5E7EB;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .table-header h3 {
+        font-size: 15px;
+        font-weight: 800;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .table-header h3 i {
+        color: #FF6B35;
+    }
+
+    .emp-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px 14px;
+        padding: 12px 24px;
+        background: #F9FAFB;
+        border-bottom: 1px solid #E5E7EB;
+    }
+
+    .emp-toolbar-label {
+        font-size: 12px;
+        font-weight: 700;
+        color: #6B7280;
+    }
+
+    .emp-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 24px;
+        border-top: 1px solid #E5E7EB;
+        font-size: 13px;
+        color: #6B7280;
+        flex-wrap: wrap;
+    }
+
+    .emp-pagination-btns {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .emp-pagination-btns button {
+        padding: 6px 14px;
+        border-radius: 8px;
+        border: 1px solid #E5E7EB;
+        background: #fff;
+        font-family: 'Nunito', sans-serif;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        color: #374151;
+    }
+
+    .emp-pagination-btns button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+    .emp-pagination-btns button:not(:disabled):hover {
+        border-color: #FF6B35;
+        color: #FF6B35;
+    }
+
+    .filter-group {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .filter-select {
+        border: 1.5px solid #E5E7EB;
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 13px;
+        font-family: 'Nunito', sans-serif;
+        cursor: pointer;
+        transition: border-color .15s;
+    }
+
+    .filter-select:hover {
+        border-color: #FF6B35;
+    }
+
+    .filter-select:focus {
+        outline: none;
+        border-color: #FF6B35;
+        box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.12);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+    thead {
+        background: #F9FAFB;
+        border-bottom: 1px solid #E5E7EB;
+    }
+
+    th {
+        padding: 14px 24px;
+        text-align: left;
+        font-weight: 700;
+        color: #6B7280;
+        text-transform: uppercase;
+        font-size: 11px;
+        letter-spacing: .05em;
+    }
+
+    tbody tr {
+        border-bottom: 1px solid #F3F4F6;
+        transition: background .15s;
+    }
+
+    tbody tr:hover {
+        background: #F9FAFB;
+    }
+
+    td {
+        padding: 14px 24px;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .status-on-time {
+        background: #ECFDF5;
+        color: #10B981;
+    }
+
+    .status-late {
+        background: #FEF3C7;
+        color: #D97706;
+    }
+
+    .status-absent {
+        background: #FEF2F2;
+        color: #EF4444;
+    }
+
+    .status-leave {
+        background: #EFF6FF;
+        color: #3B82F6;
+    }
+
+    .no-data {
+        text-align: center;
+        padding: 40px 24px;
+        color: #9CA3AF;
+    }
+
+    .no-data i {
+        font-size: 48px;
+        margin-bottom: 16px;
+        color: #D1D5DB;
+    }
+
+    @media (max-width: 768px) {
+        .card-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .table-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 16px;
+        }
+
+        .filter-group {
+            width: 100%;
+            flex-wrap: wrap;
+        }
+
+        table {
+            font-size: 12px;
+        }
+
+        th, td {
+            padding: 10px 12px;
+        }
+
+        .chart-container {
+            height: 250px;
+        }
+    }
+</style>
+
+<script th:fragment="custom-scripts" th:inline="javascript">
+    let attendanceChart;
+
+    // Biến toàn cục từ Thymeleaf
+    const CURRENT_NV_ID = /*[[${nhanVienId}]]*/ "null";
+
+    // Hàm lấy JWT token theo từng tab (sessionStorage) + fallback URL
+    function getJwtToken() {
+        const fromSession = sessionStorage.getItem('token');
+        if (fromSession && fromSession !== 'null' && fromSession !== 'undefined') return fromSession;
+
+        const params = new URL(window.location.href).searchParams;
+        const fromUrl = params.get('access_token');
+        if (fromUrl && fromUrl !== 'null' && fromUrl !== 'undefined') {
+            sessionStorage.setItem('token', fromUrl);
+            return fromUrl;
+        }
+
+        // Fallback cookie (giữ tương thích luồng cũ)
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; jwt_token=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return null;
+    }
+
+    // Hàm tạo header Authorization chuẩn
+    function getAuthHeaders() {
+        const token = getJwtToken();
+        return {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+        };
+    }
+
+    async function initChart(labels, datasetOnTime, datasetLate, datasetAbsent) {
+        const ctx = document.getElementById('attendanceChart').getContext('2d');
+        const L = labels && labels.length ? labels : ['—','—','—','—','—','—'];
+        const O = datasetOnTime && datasetOnTime.length ? datasetOnTime : [0,0,0,0,0,0];
+        const La = datasetLate && datasetLate.length ? datasetLate : [0,0,0,0,0,0];
+        const Ab = datasetAbsent && datasetAbsent.length ? datasetAbsent : [0,0,0,0,0,0];
+
+        if (attendanceChart) {
+            attendanceChart.destroy();
+        }
+
+        attendanceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: L,
+                datasets: [
+                    {
+                        label: 'Đúng Giờ',
+                        data: O,
+                        borderColor: '#10B981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#10B981',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
+                    },
+                    {
+                        label: 'Đi Muộn',
+                        data: La,
+                        borderColor: '#F59E0B',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#F59E0B',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
+                    },
+                    {
+                        label: 'Vắng Mặt',
+                        data: Ab,
+                        borderColor: '#EF4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#EF4444',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            usePointStyle: true,
+                            padding: 16,
+                            font: {
+                                size: 12,
+                                weight: '600',
+                                family: "'Nunito', sans-serif"
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: '#F3F4F6',
+                            drawBorder: false
+                        },
+                        ticks: {
+                            font: {
+                                size: 12,
+                                family: "'Nunito', sans-serif"
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            font: {
+                                size: 12,
+                                family: "'Nunito', sans-serif"
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    let attendanceRows = [];
+    let attendancePage = 1;
+
+    function initAttendanceMonthSelect() {
+        const sel = document.getElementById('monthFilter');
+        if (!sel || sel.dataset.inited === '1') return;
+        sel.dataset.inited = '1';
+        const now = new Date();
+        sel.innerHTML = '';
+        for (let i = 0; i < 12; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            const lbl = `Tháng ${d.getMonth() + 1}/${d.getFullYear()}`;
+            sel.appendChild(new Option(lbl, val));
+        }
+        sel.addEventListener('change', () => {
+            attendancePage = 1;
+            loadAttendanceHistoryTable();
+        });
+    }
+
+    function statusCellHtml(trangThai) {
+        const s = (trangThai || '').toUpperCase();
+        if (s === 'DI_MUON') return '<span class="status-badge status-late">⏱ Đi Muộn</span>';
+        if (s === 'DI_LAM') return '<span class="status-badge status-on-time">✓ Đúng Giờ</span>';
+        if (s === 'DI_NGHI' || s === 'NGHI_PHEP' || s === 'PHEP') return '<span class="status-badge status-leave">📅 Nghỉ / Phép</span>';
+        if (s === 'VANG' || s === 'KHONG_PHEP') return '<span class="status-badge status-absent">Vắng</span>';
+        return `<span class="status-badge">${trangThai || '—'}</span>`;
+    }
+
+    function onAttendanceFiltersChange() {
+        attendancePage = 1;
+        renderAttendanceTablePage();
+    }
+
+    function renderAttendanceTablePage() {
+        const table = document.getElementById('attendanceTable');
+        const pag = document.getElementById('attendancePagination');
+        if (!table) return;
+
+        let list = attendanceRows.slice();
+        const st = document.getElementById('statusFilter').value;
+        if (st) {
+            list = list.filter(r => {
+                const x = (r.trangThai || '').toUpperCase();
+                if (st === 'PHEP') return x === 'PHEP' || x === 'NGHI_PHEP';
+                return x === st.toUpperCase();
+            });
+        }
+        const sort = document.getElementById('sortAttendance').value;
+        list.sort((a, b) => {
+            const da = new Date(a.ngay).getTime();
+            const db = new Date(b.ngay).getTime();
+            if (sort === 'ngay_asc') return da - db;
+            if (sort === 'ngay_desc') return db - da;
+            return (a.trangThai || '').localeCompare(b.trangThai || '', 'vi');
+        });
+
+        const pageSize = Math.max(1, parseInt(document.getElementById('pageSizeAttendance').value, 10) || 10);
+        const total = list.length;
+        const pages = Math.max(1, Math.ceil(total / pageSize));
+        if (attendancePage > pages) attendancePage = pages;
+        const start = (attendancePage - 1) * pageSize;
+        const slice = list.slice(start, start + pageSize);
+
+        if (total === 0) {
+            table.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#6B7280;">Không có bản ghi phù hợp.</td></tr>';
+        } else {
+            table.innerHTML = slice.map(item => {
+                const gioVao = item.gioVao != null ? String(item.gioVao).substring(0, 8) : '—';
+                const gioRa = item.gioRa != null ? String(item.gioRa).substring(0, 8) : '—';
+                return `<tr>
+                    <td>${new Date(item.ngay).toLocaleDateString('vi-VN')}</td>
+                    <td>${gioVao}</td>
+                    <td>${gioRa}</td>
+                    <td>${statusCellHtml(item.trangThai)}</td>
+                    <td>${item.ghiChu || '—'}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        if (pag) {
+            pag.innerHTML = `
+                <span>Hiển thị ${total === 0 ? 0 : start + 1}–${Math.min(start + pageSize, total)} / ${total}</span>
+                <div class="emp-pagination-btns">
+                    <button type="button" ${attendancePage <= 1 ? 'disabled' : ''} onclick="goAttendancePage(${attendancePage - 1})">← Trước</button>
+                    <span style="font-weight:700;color:#374151">Trang ${attendancePage}/${pages}</span>
+                    <button type="button" ${attendancePage >= pages ? 'disabled' : ''} onclick="goAttendancePage(${attendancePage + 1})">Sau →</button>
+                </div>`;
+        }
+    }
+
+    function goAttendancePage(p) {
+        attendancePage = Math.max(1, p);
+        renderAttendanceTablePage();
+    }
+
+    async function loadAttendanceHistoryTable() {
+        const month = document.getElementById('monthFilter').value;
+        const table = document.getElementById('attendanceTable');
+        table.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#6B7280; padding:18px;">Đang tải...</td></tr>';
+        try {
+            const historyResp = await fetch('/api/dashboard/employee/attendance-history?month=' + encodeURIComponent(month), { headers: getAuthHeaders() });
+            if (!historyResp.ok) throw new Error('history');
+            const history = await historyResp.json();
+            attendanceRows = Array.isArray(history) ? history : [];
+            renderAttendanceTablePage();
+        } catch (e) {
+            console.error(e);
+            table.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#EF4444;">Lỗi tải lịch sử.</td></tr>';
+        }
+    }
+
+    async function loadAttendanceTrendChart() {
+        try {
+            const r = await fetch('/api/dashboard/employee/attendance-trend', { headers: getAuthHeaders() });
+            if (!r.ok) throw new Error('trend');
+            const data = await r.json();
+            initChart(data.labels || [], data.onTime || [], data.late || [], data.absent || []);
+        } catch (e) {
+            initChart();
+        }
+    }
+
+    async function loadAttendancePage() {
+        try {
+            initAttendanceMonthSelect();
+            const [statsResp, summaryResp] = await Promise.all([
+                fetch('/api/dashboard/employee/stats', { headers: getAuthHeaders() }),
+                fetch('/api/dashboard/employee/attendance-summary', { headers: getAuthHeaders() })
+            ]);
+
+            if (statsResp.ok) {
+                const stats = await statsResp.json();
+                document.getElementById('on-time-count').textContent = stats.ngayCoMat || 0;
+                document.getElementById('late-count').textContent = stats.diMuon || 0;
+                document.getElementById('absent-count').textContent = Math.max(0, (stats.tongNgayCong || 0) - (stats.ngayCoMat || 0));
+                document.getElementById('leave-count').textContent = stats.phepConLai || 0;
+            }
+
+            if (summaryResp.ok) {
+                const summary = await summaryResp.json();
+                const onTime = Number(summary.pctDungGio || 0);
+                const late = Number(summary.pctDiMuon || 0);
+                const absent = Number(summary.pctVangMat || 0);
+                const progressItems = document.querySelectorAll('.progress-label span + span');
+                if (progressItems.length >= 3) {
+                    progressItems[0].textContent = onTime + '%';
+                    progressItems[1].textContent = late + '%';
+                    progressItems[2].textContent = absent + '%';
+                }
+                const fills = document.querySelectorAll('.progress-fill');
+                if (fills.length >= 3) {
+                    fills[0].style.width = onTime + '%';
+                    fills[1].style.width = late + '%';
+                    fills[2].style.width = absent + '%';
+                }
+            }
+
+            await loadAttendanceTrendChart();
+            await loadAttendanceHistoryTable();
+        } catch (err) {
+            console.error('Lỗi khi tải dữ liệu chấm công:', err);
+            toast('Không thể tải dữ liệu chấm công. Vui lòng thử lại.', 'error');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('>>> Attendance page loaded');
+        loadAttendancePage();
+    });
+</script>
+
+</body>
+</html>

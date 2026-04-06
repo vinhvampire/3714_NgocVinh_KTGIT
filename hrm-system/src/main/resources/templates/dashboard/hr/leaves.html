@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/dashboard-layout :: html(content=~{::page-content}, styles=~{dashboard/hr :: custom-styles}, scripts=~{::custom-scripts})}"
+      lang="vi">
+<head>
+    <title>HR - Đơn phép</title>
+</head>
+<body>
+
+<th:block th:fragment="page-content">
+
+    <div class="hr-banner">
+        <div class="hb-left">
+            <h2><i class="fa-solid fa-calendar-alt" style="margin-right:8px;opacity:.8"></i>Đơn phép</h2>
+            <p>Duyệt đơn phép còn chờ HR xử lý.</p>
+            <div class="hb-date" id="dateTime">...</div>
+        </div>
+    </div>
+
+    <th:block th:replace="~{fragments/hr-subnav :: subnav}"></th:block>
+
+    <div class="card" style="margin-bottom:24px">
+        <div class="card-hd">
+            <div class="card-title">
+                <i class="fa-solid fa-file-circle-exclamation" style="color:var(--hr);margin-right:6px"></i>
+                Đơn phép chờ HR xác nhận
+                <span id="pendingLeaveBadge" style="background:var(--err);color:#fff;font-size:10px;padding:1px 7px;border-radius:20px;margin-left:6px">—</span>
+            </div>
+            <a class="card-link" href="#">Xem tất cả</a>
+        </div>
+
+        <table class="leave-table">
+            <thead>
+            <tr>
+                <th>Nhân viên</th>
+                <th>Phòng ban</th>
+                <th>Loại phép</th>
+                <th>Thời gian</th>
+                <th>Ngày nộp</th>
+                <th>Trạng thái</th>
+                <th>Dept Head</th>
+                <th>Thao tác HR</th>
+            </tr>
+            </thead>
+            <tbody id="hrLeaveBody">
+            <tr>
+                <td colspan="8">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-spinner fa-spin"></i>
+                        <p>Đang tải đơn phép...</p>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+
+        <div id="emptyHrLeave" style="display:none;text-align:center;padding:32px 0;color:var(--txt2)">
+            <i class="fa-solid fa-circle-check" style="font-size:32px;color:var(--ok);margin-bottom:10px;display:block"></i>
+            <div style="font-weight:700;font-size:14px">Không còn đơn nào chờ duyệt</div>
+            <div style="font-size:13px;margin-top:4px">Tất cả đơn phép đã được HR xử lý</div>
+        </div>
+    </div>
+
+    <!-- ═══ MODAL TỪ CHỐI ═══ -->
+    <div class="modal-overlay" id="rejectModal">
+        <div class="modal-box">
+            <div class="modal-title">
+                <i class="fa-solid fa-xmark-circle" style="color:var(--err);margin-right:7px"></i>
+                Từ chối đơn phép (HR)
+            </div>
+            <div class="modal-sub" id="rejectSub">Nhập lý do từ chối</div>
+            <label class="modal-label">
+                Lý do từ chối <span style="color:var(--err)">*</span>
+            </label>
+            <textarea class="modal-textarea" id="rejectReason"
+                      placeholder="Ví dụ: Quỹ phép đã hết, đề nghị nhân viên xem lại..."></textarea>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeRejectModal()">Hủy</button>
+                <button class="btn-confirm-reject" onclick="confirmReject()">
+                    <i class="fa-solid fa-xmark"></i> Xác nhận từ chối
+                </button>
+            </div>
+        </div>
+    </div>
+
+</th:block>
+
+<script th:fragment="custom-scripts">
+    function tick() {
+        const d = new Date();
+        const days = ['Chủ nhật','Thứ hai','Thứ ba','Thứ tư','Thứ năm','Thứ sáu','Thứ bảy'];
+        const str = days[d.getDay()] + ', ' +
+            String(d.getDate()).padStart(2,'0') + '/' +
+            String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear() +
+            ' — ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+        document.getElementById('dateTime').textContent = str;
+    }
+
+    async function apiFetch(url, options = {}) {
+        const defaultOptions = { headers: getAuthHeaders(), ...options };
+        const response = await fetch(url, defaultOptions);
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        return response;
+    }
+
+    async function apiFetchJson(url, options = {}) {
+        return (await apiFetch(url, options)).json();
+    }
+
+    /* ── 1. Load Đơn Phép Chờ HR ── */
+    let hrPendingCount = 0;
+    let hrLeaveMap = {}; // map id -> tên NV
+
+    async function loadLeaveTable() {
+        const tbody = document.getElementById('hrLeaveBody');
+        tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>Đang tải đơn phép...</p></div></td></tr>`;
+        try {
+            const data = await apiFetchJson('/api/dashboard/hr/leaves/pending');
+            renderLeaveTable(data);
+        } catch(e) {
+            console.error('loadLeaveTable error:', e);
+            tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><i class="fa-solid fa-triangle-exclamation" style="color:var(--err);opacity:.5"></i><p>Lỗi tải dữ liệu</p></div></td></tr>`;
+        }
+    }
+
+    function renderLeaveTable(list) {
+        const tbody = document.getElementById('hrLeaveBody');
+        hrPendingCount = list.length;
+        document.getElementById('pendingLeaveBadge').textContent = hrPendingCount;
+
+        if (hrPendingCount === 0) {
+            tbody.innerHTML = '';
+            document.getElementById('emptyHrLeave').style.display = 'block';
+            return;
+        }
+
+        document.getElementById('emptyHrLeave').style.display = 'none';
+
+        hrLeaveMap = {};
+        list.forEach(d => { hrLeaveMap[d.id] = d.tenNV; });
+
+        const leaveColors = {
+            'PHEP_NAM': 'var(--inf-s)/var(--inf)/Phép năm',
+            'PHEP_OM':  'var(--err-s)/var(--err)/Phép ốm',
+            'NGHI_LE':  'var(--ok-s)/var(--ok)/Nghỉ lễ',
+        };
+
+        function leaveTrangThaiBadge(tt) {
+            const s = (tt || '').toUpperCase().trim();
+            const map = {
+                'CHO_HR_XAC_NHAN': { cls: 'st-warn', icon: 'fa-clock', label: 'Chờ HR xác nhận' },
+                'DA_DUYET':  { cls: 'st-ok',   icon: 'fa-check', label: 'Đã duyệt' },
+                'TU_CHOI':   { cls: 'st-err',  icon: 'fa-xmark', label: 'Từ chối' },
+            };
+            const m = map[s] || { cls: 'st-inf', icon: 'fa-circle-question', label: tt || '—' };
+            return `<span class="st-badge ${m.cls}"><i class="fa-solid ${m.icon}"></i> ${m.label}</span>`;
+        }
+
+        tbody.innerHTML = list.map(d => {
+            const initials = (d.tenNV || '??').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+            const [lbg, lclr, llbl] = (leaveColors[d.loaiPhep] || 'var(--hr-s)/var(--hr)/Khác').split('/');
+            const deptApproved = d.deptHeadStatus === 'APPROVED';
+
+            return `
+            <tr id="hr-row-${d.id}">
+                <td>
+                    <div class="emp-cell">
+                        <div class="emp-av" style="background:var(--ok-s);color:var(--ok)">${initials}</div>
+                        <div>
+                            <div class="emp-name">${d.tenNV}</div>
+                            <div class="emp-dept">${d.chucVu || ''}</div>
+                        </div>
+                    </div>
+                </td>
+                <td><span class="dept-tag">${d.tenPhong || '—'}</span></td>
+                <td><span class="leave-type-badge" style="background:${lbg};color:${lclr}">${llbl}</span></td>
+                <td style="font-size:12px;color:var(--txt2)">${d.tuNgay} → ${d.denNgay}<br><strong style="color:var(--txt)">${d.soNgay} ngày</strong></td>
+                <td style="font-size:12px;color:var(--txt2)">${d.ngayNop}</td>
+                <td>${leaveTrangThaiBadge(d.trangThai)}</td>
+                <td>
+                    <div class="approval-step">
+                        <div class="step">
+                            <div class="dot" style="background:${deptApproved ? 'var(--ok)' : 'var(--txt2)'}"></div>
+                            <span style="color:${deptApproved ? 'var(--ok)' : 'var(--txt2)'}">Dept Head: ${deptApproved ? 'Đã duyệt' : 'Chưa duyệt'}</span>
+                        </div>
+                        <div class="step">
+                            <div class="dot" style="background:var(--warn)"></div>
+                            <span style="color:var(--warn)">HR: Chờ duyệt</span>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div style="display:flex;gap:6px">
+                        <button class="qa-approve" onclick="hrApprove(${d.id})"><i class="fa-solid fa-check"></i> Duyệt</button>
+                        <button class="qa-reject"  onclick="openRejectModal(${d.id})"><i class="fa-solid fa-xmark"></i> Từ chối</button>
+                    </div>
+                </td>
+            </tr>
+            `;
+        }).join('');
+    }
+
+    /* ── HR Approve ── */
+    async function hrApprove(id) {
+        const name = hrLeaveMap[id] || 'NV';
+        try {
+            await apiFetch(`/api/dashboard/hr/leaves/${id}/approve`, { method: 'PUT' });
+
+            const row = document.getElementById('hr-row-' + id);
+            if (row) {
+                row.querySelector('td:last-child').innerHTML =
+                    '<span class="st-badge st-ok"><i class="fa-solid fa-check"></i> HR đã duyệt</span>';
+
+                setTimeout(() => {
+                    row.style.transition = 'opacity .4s';
+                    row.style.opacity = '0';
+                    setTimeout(() => { row.remove(); hrPendingCount--; checkEmpty(); }, 400);
+                }, 1200);
+            }
+
+            toast('Đã duyệt đơn phép của ' + name, 'success');
+        } catch (e) {
+            console.error('hrApprove error:', e);
+            toast('Lỗi khi duyệt đơn — thử lại sau', 'warning');
+        }
+    }
+
+    /* ── HR Reject Modal ── */
+    let rejectTargetId = null;
+
+    function openRejectModal(id) {
+        rejectTargetId = id;
+        const name = hrLeaveMap[id] || 'NV';
+        document.getElementById('rejectSub').innerHTML =
+            `Nhập lý do từ chối đơn phép của <strong>${name}</strong>`;
+        document.getElementById('rejectReason').value = '';
+        document.getElementById('rejectModal').classList.add('show');
+    }
+
+    function closeRejectModal() {
+        document.getElementById('rejectModal').classList.remove('show');
+        rejectTargetId = null;
+    }
+
+    async function confirmReject() {
+        const reason = document.getElementById('rejectReason').value.trim();
+        if (!reason) {
+            const el = document.getElementById('rejectReason');
+            el.style.borderColor = 'var(--err)';
+            setTimeout(() => el.style.borderColor = '', 1500);
+            return;
+        }
+
+        const id = rejectTargetId;
+        const name = hrLeaveMap[id] || 'NV';
+
+        try {
+            await apiFetch(`/api/dashboard/hr/leaves/${id}/reject`, {
+                method: 'PUT',
+                body: JSON.stringify({ reason })
+            });
+
+            const row = document.getElementById('hr-row-' + id);
+            if (row) {
+                row.querySelector('td:last-child').innerHTML =
+                    '<span class="st-badge st-err"><i class="fa-solid fa-xmark"></i> HR từ chối</span>';
+
+                setTimeout(() => {
+                    row.style.transition = 'opacity .4s';
+                    row.style.opacity = '0';
+                    setTimeout(() => { row.remove(); hrPendingCount--; checkEmpty(); }, 400);
+                }, 1200);
+            }
+
+            toast('Đã từ chối đơn phép của ' + name, 'warning');
+            closeRejectModal();
+        } catch (e) {
+            console.error('confirmReject error:', e);
+            toast('Lỗi khi từ chối — thử lại sau', 'warning');
+        }
+    }
+
+    function checkEmpty() {
+        if (hrPendingCount <= 0) document.getElementById('emptyHrLeave').style.display = 'block';
+        document.getElementById('pendingLeaveBadge').textContent = Math.max(0, hrPendingCount);
+    }
+
+    document.getElementById('rejectModal').addEventListener('click', function(e) {
+        if (e.target === this) closeRejectModal();
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        tick();
+        loadLeaveTable();
+    });
+</script>
+
+</body>
+</html>
+

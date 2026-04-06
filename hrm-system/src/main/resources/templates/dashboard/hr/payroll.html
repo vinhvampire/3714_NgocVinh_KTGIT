@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/dashboard-layout :: html(content=~{::page-content}, styles=~{dashboard/hr :: custom-styles}, scripts=~{::custom-scripts})}"
+      lang="vi">
+<head>
+    <title>HR - Lương</title>
+</head>
+<body>
+
+<th:block th:fragment="page-content">
+
+    <div class="hr-banner">
+        <div class="hb-left">
+            <h2><i class="fa-solid fa-money-bill-wave" style="margin-right:8px;opacity:.8"></i>Lương</h2>
+            <p>Phê duyệt phiếu lương chưa chốt.</p>
+            <div class="hb-date" id="dateTime">...</div>
+        </div>
+    </div>
+
+    <th:block th:replace="~{fragments/hr-subnav :: subnav}"></th:block>
+
+    <div class="card" style="margin-bottom:16px">
+        <div class="card-hd" style="margin-bottom:10px">
+            <div class="card-title"><i class="fa-solid fa-gears" style="color:var(--hr);margin-right:6px"></i>Thao tác nghiệp vụ lương</div>
+        </div>
+        <p class="modal-sub" style="margin:0 0 12px 0">Chọn tháng ở bảng dưới, sau đó chạy tổng hợp (tạo phiếu lương cho NV đã gán bảng lương). Thiết lập cấu trúc theo chức vụ trước khi gán cho nhân viên.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+            <button type="button" class="btn-confirm-reject"
+                    style="background:var(--ok);color:#fff;padding:9px 14px;font-size:12px;border-radius:8px;border:none;cursor:pointer"
+                    onclick="runPayrollGenerate()">
+                <i class="fa-solid fa-calculator"></i> Tính / tạo phiếu lương tháng
+            </button>
+            <button type="button" class="btn-confirm-reject"
+                    style="background:var(--hr);color:#fff;padding:9px 14px;font-size:12px;border-radius:8px;border:none;cursor:pointer"
+                    onclick="openStructureModal()">
+                <i class="fa-solid fa-layer-group"></i> Thêm cấu trúc lương (chức vụ)
+            </button>
+        </div>
+    </div>
+
+    <!-- ── Danh sách bảng lương ── -->
+    <div class="card" style="margin-bottom:24px">
+        <div class="card-hd" style="margin-bottom:12px;flex-wrap:wrap;gap:12px;align-items:center">
+            <div class="card-title"><i class="fa-solid fa-list" style="color:var(--hr);margin-right:6px"></i>Danh sách bảng lương</div>
+            <span id="structureLoadHint" style="color:var(--txt2);font-size:12px;font-weight:700">—</span>
+        </div>
+
+        <table class="rank-table" style="width:100%;">
+            <thead>
+            <tr>
+                <th style="width:20px">#</th>
+                <th>Mã</th>
+                <th>Tên chức vụ</th>
+                <th>Lương cơ bản</th>
+                <th>Phụ cấp</th>
+                <th>Hành động</th>
+            </tr>
+            </thead>
+            <tbody id="bangLuongBody">
+            <tr>
+                <td colspan="6">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-spinner fa-spin"></i>
+                        <p>Đang tải bảng lương...</p>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card" style="margin-bottom:24px">
+        <div class="card-hd" style="margin-bottom:12px;flex-wrap:wrap;gap:12px;align-items:center">
+            <div class="card-title"><i class="fa-solid fa-file-invoice-dollar" style="color:var(--inf);margin-right:6px"></i>Phê duyệt lương</div>
+            <div class="filter-row" style="margin-bottom:0;flex:1;min-width:200px;justify-content:flex-end">
+                <label>Tháng:</label>
+                <select class="filter-select" id="payrollMonthFilter" onchange="loadHrPayslips()">
+                    <option value="">-- Tất cả --</option>
+                </select>
+            </div>
+            <button class="btn-confirm-reject"
+                    style="background:var(--inf);color:#fff;padding:8px 12px;font-size:12px;border-radius:8px;border:none;cursor:pointer"
+                    onclick="loadHrPayslips()">
+                Tải lại
+            </button>
+        </div>
+
+        <table class="rank-table" style="width:100%;">
+            <thead>
+            <tr>
+                <th style="width:20px">#</th>
+                <th>ID</th>
+                <th>Nhân viên</th>
+                <th>Tháng</th>
+                <th>Tổng</th>
+                <th>Trạng thái</th>
+                <th>Hành động</th>
+            </tr>
+            </thead>
+            <tbody id="hrPayslipBody">
+            <tr>
+                <td colspan="7">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-spinner fa-spin"></i>
+                        <p>Đang tải phiếu lương...</p>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="modal-overlay" id="structureModal">
+        <div class="modal-box" style="max-width:440px">
+            <div class="modal-title"><i class="fa-solid fa-coins" style="color:var(--hr);margin-right:6px"></i>Thiết lập bảng lương theo chức vụ</div>
+            <div class="modal-sub" style="margin-bottom:12px">Lưu vào <code>bang_luong</code> (gán cho nhân viên ở dữ liệu NV).</div>
+            <label class="modal-sub" style="display:block;margin-bottom:4px">Mã (VD: BL001)</label>
+            <input id="bl-id" class="modal-textarea" placeholder="BL001" style="margin-bottom:8px;width:100%;box-sizing:border-box">
+            <label class="modal-sub" style="display:block;margin-bottom:4px">Tên chức vụ</label>
+            <input id="bl-ten" class="modal-textarea" placeholder="Trưởng phòng" style="margin-bottom:8px;width:100%;box-sizing:border-box">
+            <label class="modal-sub" style="display:block;margin-bottom:4px">Lương cơ bản (VNĐ)</label>
+            <input id="bl-cb" type="number" class="modal-textarea" placeholder="15000000" style="margin-bottom:8px;width:100%;box-sizing:border-box">
+            <label class="modal-sub" style="display:block;margin-bottom:4px">Phụ cấp định mức (VNĐ)</label>
+            <input id="bl-pc" type="number" class="modal-textarea" placeholder="3000000" style="margin-bottom:14px;width:100%;box-sizing:border-box">
+            <div class="modal-footer" style="display:flex;gap:10px;justify-content:flex-end">
+                <button type="button" class="btn-cancel" onclick="closeStructureModal()">Hủy</button>
+                <button type="button" class="btn-confirm-reject" style="background:var(--hr);color:#fff;padding:8px 14px;border:none;border-radius:8px;cursor:pointer" onclick="saveSalaryStructure()">Lưu</button>
+            </div>
+        </div>
+    </div>
+
+</th:block>
+
+<script th:fragment="custom-scripts">
+    function tick() {
+        const d = new Date();
+        const days = ['Chủ nhật','Thứ hai','Thứ ba','Thứ tư','Thứ năm','Thứ sáu','Thứ bảy'];
+        const str = days[d.getDay()] + ', ' +
+            String(d.getDate()).padStart(2,'0') + '/' +
+            String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear() +
+            ' — ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+        document.getElementById('dateTime').textContent = str;
+    }
+
+    async function apiFetch(url, options = {}) {
+        const defaultOptions = { headers: getAuthHeaders(), ...options };
+        const response = await fetch(url, defaultOptions);
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        return response;
+    }
+
+    async function apiFetchJson(url, options = {}) {
+        return (await apiFetch(url, options)).json();
+    }
+
+    function formatMoney(n) {
+        if (n === null || n === undefined || Number.isNaN(Number(n))) return '—';
+        return Number(n).toLocaleString('vi-VN') + 'đ';
+    }
+
+    async function loadBangLuongStructures() {
+        const tbody = document.getElementById('bangLuongBody');
+        const hint = document.getElementById('structureLoadHint');
+        if (hint) hint.textContent = 'Đang tải...';
+        tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>Đang tải bảng lương...</p></div></td></tr>`;
+
+        try {
+            const data = await apiFetchJson('/api/payroll/structure');
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="fa-solid fa-circle-check" style="color:var(--ok);opacity:.5"></i><p>Chưa có bảng lương</p></div></td></tr>`;
+                if (hint) hint.textContent = '0';
+                return;
+            }
+            if (hint) hint.textContent = data.length + ' bảng';
+
+            tbody.innerHTML = data.map((bl, i) => `
+                <tr>
+                    <td>${i + 1}</td>
+                    <td>${bl.id || '—'}</td>
+                    <td>${bl.tenChucVu || '—'}</td>
+                    <td>${formatMoney(bl.luongCoBan)}</td>
+                    <td>${formatMoney(bl.phuCapDinhMuc)}</td>
+                    <td>
+                        <button type="button"
+                                class="btn-confirm-reject"
+                                style="background:var(--err);color:#fff;font-size:11px;padding:4px 8px;border:none;border-radius:10px;cursor:pointer"
+                                onclick="deleteSalaryStructure('${bl.id}')">Xóa</button>
+                    </td>
+                </tr>
+            `).join('');
+        } catch (e) {
+            console.error('loadBangLuongStructures error:', e);
+            tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="fa-solid fa-triangle-exclamation" style="color:var(--err);opacity:.5"></i><p>Lỗi tải bảng lương</p></div></td></tr>`;
+            if (hint) hint.textContent = '—';
+        }
+    }
+
+    async function deleteSalaryStructure(id) {
+        if (!confirm('Xóa bảng lương ' + id + '?')) return;
+        try {
+            const res = await fetch('/api/payroll/structure/' + encodeURIComponent(id), {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.message || 'Xóa thất bại');
+            toast(data.message || 'Xóa thành công', 'success');
+            await loadBangLuongStructures();
+        } catch (e) {
+            toast(e.message || 'Xóa thất bại', 'warning');
+        }
+    }
+
+    function initPayrollMonths() {
+        const sel = document.getElementById('payrollMonthFilter');
+        const now = new Date();
+        sel.innerHTML = `<option value="">-- Tất cả --</option>`;
+        for (let i = 0; i < 4; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+            const lbl = `Tháng ${d.getMonth()+1}/${d.getFullYear()}`;
+            sel.appendChild(new Option(lbl, val));
+        }
+        sel.selectedIndex = 1;
+    }
+
+    function payslipStatusBadge(st) {
+        const s = (st || '').toUpperCase();
+        if (s === 'DA_THANH_TOAN') return '<span class="st-badge st-ok"><i class="fa-solid fa-check"></i> Đã thanh toán</span>';
+        if (s === 'CHUA_THANH_TOAN') return '<span class="st-badge st-warn"><i class="fa-solid fa-clock"></i> Chưa thanh toán</span>';
+        return `<span class="st-badge st-inf">${st || '—'}</span>`;
+    }
+
+    async function loadHrPayslips() {
+        const tbody = document.getElementById('hrPayslipBody');
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>Đang tải phiếu lương...</p></div></td></tr>`;
+        try {
+            const month = document.getElementById('payrollMonthFilter').value;
+            const q = month ? `?month=${encodeURIComponent(month)}` : '';
+            const data = await apiFetchJson('/api/dashboard/hr/payslips' + q);
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-circle-check" style="color:var(--ok);opacity:.5"></i><p>Không có phiếu lương</p></div></td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = data.map((p, i) => `
+                <tr>
+                    <td>${i+1}</td>
+                    <td>${p.id || '—'}</td>
+                    <td>${p.nhanVien?.hoTen || p.tenNV || '—'}</td>
+                    <td>${p.thangNam || '—'}</td>
+                    <td>${p.tongLuong != null ? p.tongLuong.toLocaleString('vi-VN') + 'đ' : '—'}</td>
+                    <td>${payslipStatusBadge(p.trangThaiThanhToan)}</td>
+                    <td>
+                        ${p.trangThaiThanhToan === 'CHUA_THANH_TOAN'
+                            ? `<button class="qa-approve" style="font-size:11px;padding:4px 8px;" onclick="confirmPayslip('${p.id}')">Xác nhận</button>`
+                            : '<span class="st-badge st-ok"><i class="fa-solid fa-lock"></i> Đã chốt</span>'
+                        }
+                    </td>
+                </tr>
+            `).join('');
+        } catch (e) {
+            console.error('loadHrPayslips error:', e);
+            tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-triangle-exclamation" style="color:var(--err);opacity:.5"></i><p>Lỗi tải phiếu lương</p></div></td></tr>`;
+        }
+    }
+
+    async function confirmPayslip(id) {
+        try {
+            await apiFetch(`/api/dashboard/hr/payslips/${encodeURIComponent(id)}/confirm`, { method: 'PUT' });
+            await loadHrPayslips();
+            toast('Xác nhận phiếu lương thành công', 'success');
+        } catch (e) {
+            console.error('confirmPayslip error:', e);
+            toast('Xác nhận phiếu lương lỗi', 'warning');
+        }
+    }
+
+    function currentPayrollMonthOrAlert() {
+        const month = document.getElementById('payrollMonthFilter').value;
+        if (!month) {
+            toast('Chọn một tháng cụ thể để tính lương (không dùng «Tất cả»)', 'warning');
+            return null;
+        }
+        return month;
+    }
+
+    async function runPayrollGenerate() {
+        const thangNam = currentPayrollMonthOrAlert();
+        if (!thangNam) return;
+        if (!confirm('Tạo phiếu lương cho tháng ' + thangNam + '? (Bỏ qua NV đã có phiếu hoặc chưa gán bảng lương)')) return;
+        try {
+            const res = await fetch('/api/payroll/generate?thangNam=' + encodeURIComponent(thangNam), {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+            const text = await res.text();
+            if (!res.ok) throw new Error(text || res.status);
+            toast(text || 'Đã chạy tổng hợp lương', 'success');
+            await loadHrPayslips();
+        } catch (e) {
+            console.error(e);
+            toast('Tính lương thất bại: ' + (e.message || 'lỗi'), 'warning');
+        }
+    }
+
+    function openStructureModal() {
+        document.getElementById('structureModal').classList.add('show');
+    }
+    function closeStructureModal() {
+        document.getElementById('structureModal').classList.remove('show');
+    }
+
+    async function saveSalaryStructure() {
+        const id = document.getElementById('bl-id').value.trim();
+        const tenChucVu = document.getElementById('bl-ten').value.trim();
+        const luongCoBan = Number(document.getElementById('bl-cb').value);
+        const phuCapDinhMuc = Number(document.getElementById('bl-pc').value);
+        if (!id || !tenChucVu) {
+            toast('Mã và tên chức vụ là bắt buộc', 'warning');
+            return;
+        }
+        try {
+            const res = await fetch('/api/payroll/structure', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ id, tenChucVu, luongCoBan, phuCapDinhMuc })
+            });
+            if (!res.ok) throw new Error(await res.text());
+            toast('Đã lưu cấu trúc lương', 'success');
+            closeStructureModal();
+            document.getElementById('bl-id').value = '';
+            document.getElementById('bl-ten').value = '';
+            document.getElementById('bl-cb').value = '';
+            document.getElementById('bl-pc').value = '';
+        } catch (e) {
+            toast('Lưu cấu trúc thất bại', 'warning');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        tick();
+        initPayrollMonths();
+        loadHrPayslips();
+        loadBangLuongStructures();
+    });
+</script>
+
+</body>
+</html>
+

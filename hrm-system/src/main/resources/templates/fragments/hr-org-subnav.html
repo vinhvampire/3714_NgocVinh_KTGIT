@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<body>
+
+<th:block th:fragment="org-subnav">
+    <style>
+        .hr-org-subnav {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        .hr-org-subnav a {
+            padding: 6px 11px;
+            border-radius: 999px;
+            border: 1px dashed var(--border);
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 11px;
+            color: var(--txt2);
+            background: #fff;
+            transition: all .18s;
+        }
+        .hr-org-subnav a:hover {
+            border-color: var(--hr);
+            color: var(--hr);
+            background: var(--hr-s);
+        }
+        .hr-org-subnav a.active {
+            border-style: solid;
+            border-color: var(--hr);
+            color: var(--hr);
+            background: var(--hr-s);
+        }
+    </style>
+    <nav class="hr-org-subnav" aria-label="Tổ chức chi tiết">
+        <a href="/dashboard/hr/organization"
+           th:classappend="${currentUri != null && #strings.endsWith(currentUri, '/organization') ? 'active' : ''}">Tổng quan</a>
+        <a href="/dashboard/hr/org/chi-nhanh"
+           th:classappend="${currentUri != null && #strings.contains(currentUri, '/org/chi-nhanh') ? 'active' : ''}">Chi nhánh</a>
+        <a href="/dashboard/hr/org/phong-ban"
+           th:classappend="${currentUri != null && #strings.contains(currentUri, '/org/phong-ban') ? 'active' : ''}">Phòng ban</a>
+        <a href="/dashboard/hr/org/nhom"
+           th:classappend="${currentUri != null && #strings.contains(currentUri, '/org/nhom') ? 'active' : ''}">Nhóm</a>
+        <a href="/dashboard/hr/org/chuc-vu"
+           th:classappend="${currentUri != null && #strings.contains(currentUri, '/org/chuc-vu') ? 'active' : ''}">Chức vụ</a>
+    </nav>
+</th:block>
+
+</body>
+</html>

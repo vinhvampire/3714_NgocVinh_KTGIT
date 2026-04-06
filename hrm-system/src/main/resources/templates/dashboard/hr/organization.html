@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/dashboard-layout :: html(content=~{::page-content}, styles=~{dashboard/hr :: custom-styles}, scripts=~{::custom-scripts})}"
+      lang="vi">
+<head>
+    <title>HR - Tổ chức</title>
+</head>
+<body>
+
+<th:block th:fragment="page-content">
+
+    <div class="hr-banner">
+        <div class="hb-left">
+            <h2><i class="fa-solid fa-sitemap" style="margin-right:8px;opacity:.8"></i>Tổ chức</h2>
+            <p><strong>Tổng quan:</strong> yêu cầu tuyển dụng. <strong>Chi nhánh / Phòng ban / Nhóm / Chức vụ:</strong> CRUD đầy đủ ở từng tab (form thêm bên trái, danh sách + Sửa/Xóa bên phải).</p>
+            <div class="hb-date" id="dateTime">...</div>
+        </div>
+    </div>
+
+    <th:block th:replace="~{fragments/hr-subnav :: subnav}"></th:block>
+    <th:block th:replace="~{fragments/hr-org-subnav :: org-subnav}"></th:block>
+
+    <div class="card" style="margin-bottom:16px">
+        <div class="card-hd" style="margin-bottom:12px;flex-wrap:wrap;gap:12px;align-items:center">
+            <div class="card-title"><i class="fa-solid fa-table-list" style="color:var(--hr);margin-right:6px"></i>Yêu cầu tuyển dụng theo phòng ban</div>
+            <div class="filter-row" style="margin-bottom:0;flex:1;min-width:200px;justify-content:flex-end">
+                <label>Tháng yêu cầu:</label>
+                <select class="filter-select" id="orgRequestMonthFilter" onchange="loadRequests()">
+                    <option value="">-- Tất cả --</option>
+                </select>
+            </div>
+            <button type="button" class="btn-confirm-reject"
+                    style="background:var(--ok);color:#fff;padding:8px 12px;font-size:12px;border-radius:8px;border:none;cursor:pointer"
+                    onclick="openHiringRequestModal()">
+                <i class="fa-solid fa-plus"></i> Tạo yêu cầu
+            </button>
+            <button class="btn-confirm-reject"
+                    style="background:var(--hr);color:#fff;padding:8px 12px;font-size:12px;border-radius:8px;border:none;cursor:pointer"
+                    onclick="loadRequests()">
+                Tải lại
+            </button>
+        </div>
+
+        <table class="rank-table" style="width:100%">
+            <thead>
+            <tr>
+                <th>Mã YC</th>
+                <th>Vị trí</th>
+                <th>Phòng ban</th>
+                <th>Số lượng</th>
+                <th>Ngày yêu cầu</th>
+                <th>Trạng thái</th>
+                <th style="width:90px">Thao tác</th>
+            </tr>
+            </thead>
+            <tbody id="requestTableBody">
+            <tr>
+                <td colspan="7">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-spinner fa-spin"></i>
+                        <p>Đang tải dữ liệu...</p>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <div class="card-title" style="margin-bottom:10px">
+            <i class="fa-solid fa-link" style="color:var(--hr);margin-right:6px"></i>Đi tới màn hình quản trị tổ chức chi tiết
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px">
+            <a class="card-link" href="/dashboard/hr/org/chi-nhanh">Chi nhánh</a>
+            <a class="card-link" href="/dashboard/hr/org/phong-ban">Phòng ban</a>
+            <a class="card-link" href="/dashboard/hr/org/nhom">Nhóm</a>
+            <a class="card-link" href="/dashboard/hr/org/chuc-vu">Chức vụ</a>
+            <a class="card-link" href="/dashboard/hr/employees">Nhân viên</a>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="hiringRequestModal">
+        <div class="modal-box" style="max-width:460px">
+            <div class="modal-title"><i class="fa-solid fa-file-circle-plus" style="color:var(--hr);margin-right:6px"></i>Tạo yêu cầu tuyển dụng</div>
+            <label class="modal-sub" style="display:block;margin-bottom:4px">Vị trí cần tuyển</label>
+            <input id="hr-vitri" class="modal-textarea" style="margin-bottom:8px;width:100%;box-sizing:border-box">
+            <label class="modal-sub" style="display:block;margin-bottom:4px">Phòng ban</label>
+            <select id="hr-pb" class="modal-textarea" style="margin-bottom:8px;width:100%;box-sizing:border-box"></select>
+            <label class="modal-sub" style="display:block;margin-bottom:4px">Số lượng</label>
+            <input id="hr-sl" type="number" min="1" class="modal-textarea" value="1" style="margin-bottom:8px;width:100%;box-sizing:border-box">
+            <label class="modal-sub" style="display:block;margin-bottom:4px">Trình độ yêu cầu</label>
+            <input id="hr-td" class="modal-textarea" style="margin-bottom:8px;width:100%;box-sizing:border-box">
+            <label class="modal-sub" style="display:block;margin-bottom:4px">Mô tả</label>
+            <textarea id="hr-mt" class="modal-textarea" rows="2" style="margin-bottom:14px;width:100%;box-sizing:border-box"></textarea>
+            <div class="modal-footer" style="display:flex;gap:10px;justify-content:flex-end">
+                <button type="button" class="btn-cancel" onclick="closeHiringRequestModal()">Hủy</button>
+                <button type="button" class="btn-confirm-reject" style="background:var(--hr);color:#fff;padding:8px 14px;border:none;border-radius:8px;cursor:pointer" onclick="submitHiringRequest()">Gửi yêu cầu</button>
+            </div>
+        </div>
+    </div>
+
+</th:block>
+
+<script th:fragment="custom-scripts">
+    function tick() {
+        const d = new Date();
+        const days = ['Chủ nhật','Thứ hai','Thứ ba','Thứ tư','Thứ năm','Thứ sáu','Thứ bảy'];
+        const str = days[d.getDay()] + ', ' +
+            String(d.getDate()).padStart(2,'0') + '/' +
+            String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear() +
+            ' — ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+        document.getElementById('dateTime').textContent = str;
+    }
+
+    async function apiFetch(url, options = {}) {
+        const defaultOptions = { headers: getAuthHeaders(), ...options };
+        const response = await fetch(url, defaultOptions);
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        return response;
+    }
+
+    async function apiFetchJson(url, options = {}) {
+        return (await apiFetch(url, options)).json();
+    }
+
+    function initOrgRequestMonths() {
+        const sel = document.getElementById('orgRequestMonthFilter');
+        const now = new Date();
+        sel.innerHTML = `<option value="">-- Tất cả --</option>`;
+        for (let i = 0; i < 6; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+            const lbl = `Tháng ${d.getMonth()+1}/${d.getFullYear()}`;
+            sel.appendChild(new Option(lbl, val));
+        }
+        sel.selectedIndex = 1;
+    }
+
+    async function loadRequests() {
+        const tbody = document.getElementById('requestTableBody');
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>Đang tải dữ liệu...</p></div></td></tr>`;
+        try {
+            const month = document.getElementById('orgRequestMonthFilter').value;
+            const q = month ? `?month=${encodeURIComponent(month)}` : '';
+            const list = await apiFetchJson('/api/dashboard/hr/recruitment/requests' + q);
+            if (!list || list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-circle-check" style="color:var(--ok);opacity:.5"></i><p>Chưa có yêu cầu tuyển dụng</p></div></td></tr>`;
+                return;
+            }
+            tbody.innerHTML = list.map(r => `
+                <tr>
+                    <td>${r.idYeuCau || '—'}</td>
+                    <td>${r.viTriCanTuyen || '—'}</td>
+                    <td>${r.phongBan || '—'}</td>
+                    <td>${r.soLuong ?? '—'}</td>
+                    <td>${r.ngayYeuCau || '—'}</td>
+                    <td><span class="st-badge st-warn">${r.trangThai || '—'}</span></td>
+                    <td>
+                        <button type="button" class="qa-reject" style="font-size:11px;padding:4px 8px" onclick='deleteHiringRequest(${JSON.stringify(r.idYeuCau)})'>Xóa</button>
+                    </td>
+                </tr>
+            `).join('');
+        } catch (e) {
+            console.error('loadRequests error:', e);
+            tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-triangle-exclamation" style="color:var(--err);opacity:.5"></i><p>Lỗi tải dữ liệu</p></div></td></tr>`;
+        }
+    }
+
+    async function loadPhongBanForHiring() {
+        const sel = document.getElementById('hr-pb');
+        sel.innerHTML = '';
+        const pbs = await apiFetchJson('/api/organizations/phong-ban');
+        (pbs || []).forEach(pb => sel.appendChild(new Option(pb.tenPhongBan + ' (' + pb.id + ')', pb.id)));
+    }
+
+    async function openHiringRequestModal() {
+        await loadPhongBanForHiring();
+        document.getElementById('hr-vitri').value = '';
+        document.getElementById('hr-sl').value = '1';
+        document.getElementById('hr-td').value = '';
+        document.getElementById('hr-mt').value = '';
+        document.getElementById('hiringRequestModal').classList.add('show');
+    }
+    function closeHiringRequestModal() {
+        document.getElementById('hiringRequestModal').classList.remove('show');
+    }
+
+    async function submitHiringRequest() {
+        const viTriCanTuyen = document.getElementById('hr-vitri').value.trim();
+        const pbId = document.getElementById('hr-pb').value;
+        const soLuong = parseInt(document.getElementById('hr-sl').value, 10) || 1;
+        if (!viTriCanTuyen || !pbId) {
+            toast('Vị trí và phòng ban là bắt buộc', 'warning');
+            return;
+        }
+        const body = {
+            viTriCanTuyen,
+            soLuong,
+            trinhDoYeuCau: document.getElementById('hr-td').value.trim(),
+            moTa: document.getElementById('hr-mt').value.trim(),
+            trangThai: 'PENDING',
+            phongBan: { id: pbId }
+        };
+        try {
+            const res = await fetch('/api/recruitment/hiring-request', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify(body)
+            });
+            if (!res.ok) throw new Error(await res.text());
+            toast('Đã tạo yêu cầu tuyển dụng', 'success');
+            closeHiringRequestModal();
+            await loadRequests();
+        } catch (e) {
+            toast('Không tạo được yêu cầu', 'warning');
+        }
+    }
+
+    async function deleteHiringRequest(id) {
+        if (!id || !confirm('Xóa yêu cầu ' + id + '?')) return;
+        try {
+            await apiFetch('/api/recruitment/hiring-request/' + encodeURIComponent(id), { method: 'DELETE' });
+            toast('Đã xóa yêu cầu', 'success');
+            await loadRequests();
+        } catch (e) {
+            toast('Xóa thất bại', 'warning');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        tick();
+        initOrgRequestMonths();
+        loadRequests();
+    });
+</script>
+
+</body>
+</html>
+

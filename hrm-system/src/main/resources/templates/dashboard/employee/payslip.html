@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      th:replace="~{layouts/dashboard-layout :: html(content=~{::page-content}, styles=~{::custom-styles}, scripts=~{::custom-scripts})}" 
+      lang="vi">
+<head>
+    <title>Lương Của Tôi</title>
+</head>
+
+<body>
+
+<th:block th:fragment="page-content">
+
+    <div class="container">
+
+        <!-- Page Header -->
+        <div class="page-header">
+            <h2>
+                <i class="fas fa-file-invoice-dollar"></i>
+                Lương Của Tôi
+            </h2>
+            <div class="filter-group payslip-toolbar">
+                <select class="filter-select" id="yearFilter" onchange="reloadPayslips()">
+                    <option value="">Tất cả năm</option>
+                </select>
+                <select class="filter-select" id="monthFilter" onchange="reloadPayslips()">
+                    <option value="">Tất cả tháng</option>
+                </select>
+                <select class="filter-select" id="payslipSort" onchange="onPayslipLocalChange()">
+                    <option value="thang_desc">Kỳ lương: mới → cũ</option>
+                    <option value="thang_asc">Kỳ lương: cũ → mới</option>
+                    <option value="tong_desc">Tổng lương: cao → thấp</option>
+                    <option value="tong_asc">Tổng lương: thấp → cao</option>
+                </select>
+                <select class="filter-select" id="payslipPageSize" onchange="onPayslipLocalChange()">
+                    <option value="4">4 / trang</option>
+                    <option value="6" selected>6 / trang</option>
+                    <option value="9">9 / trang</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Payslips Grid -->
+        <div class="payslip-grid" id="payslipGrid">
+            <div class="no-data">
+                <i class="fas fa-file-invoice-dollar"></i>
+                <p>Đang tải dữ liệu phiếu lương...</p>
+            </div>
+        </div>
+        <div class="emp-pagination" id="payslipPagination"></div>
+
+    </div>
+
+    <!-- Detail Modal -->
+    <div class="modal" id="detailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="detailTitle">Chi Tiết Phiếu Lương</h3>
+                <button class="modal-close" onclick="closeDetailModal()">×</button>
+            </div>
+            <div class="modal-body" id="detailBody">
+                <div class="no-data">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Đang tải chi tiết phiếu lương...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</th:block>
+
+<style th:fragment="custom-styles">
+    .container { max-width: 100%; }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+    }
+
+    .page-header h2 {
+        font-size: 20px;
+        font-weight: 800;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .filter-group {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .payslip-toolbar {
+        justify-content: flex-end;
+    }
+
+    .emp-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 16px;
+        padding: 12px 0;
+        font-size: 13px;
+        color: #6B7280;
+        flex-wrap: wrap;
+    }
+
+    .emp-pagination-btns {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .emp-pagination-btns button {
+        padding: 6px 14px;
+        border-radius: 8px;
+        border: 1px solid #E5E7EB;
+        background: #fff;
+        font-family: 'Nunito', sans-serif;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        color: #374151;
+    }
+
+    .emp-pagination-btns button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+    .emp-pagination-btns button:not(:disabled):hover {
+        border-color: #FF6B35;
+        color: #FF6B35;
+    }
+
+    .filter-select {
+        border: 1.5px solid #E5E7EB;
+        border-radius: 8px;
+        padding: 8px 14px;
+        font-size: 13px;
+        font-family: 'Nunito', sans-serif;
+        cursor: pointer;
+        transition: border-color .15s;
+    }
+
+    .filter-select:hover {
+        border-color: #FF6B35;
+    }
+
+    .filter-select:focus {
+        outline: none;
+        border-color: #FF6B35;
+        box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.12);
+    }
+
+    /* Payslip Card */
+    .payslip-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 20px;
+        margin-bottom: 24px;
+    }
+
+    .payslip-card {
+        background: #fff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 12px rgba(0,0,0,.07);
+        transition: all .2s;
+    }
+
+    .payslip-card:hover {
+        box-shadow: 0 8px 24px rgba(0,0,0,.12);
+        transform: translateY(-2px);
+    }
+
+    .payslip-header {
+        background: linear-gradient(135deg, #FF6B35 0%, #e55a25 100%);
+        color: #fff;
+        padding: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .payslip-month {
+        font-size: 18px;
+        font-weight: 800;
+        margin-bottom: 4px;
+    }
+
+    .payslip-year {
+        font-size: 12px;
+        color: rgba(255,255,255,.8);
+    }
+
+    .payslip-status {
+        background: rgba(255,255,255,.2);
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .payslip-body {
+        padding: 16px;
+    }
+
+    .salary-line {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        font-size: 13px;
+    }
+
+    .salary-line label {
+        color: #6B7280;
+        font-weight: 500;
+    }
+
+    .salary-line .value {
+        font-weight: 700;
+        color: #1F2937;
+    }
+
+    .salary-divider {
+        border-top: 1px dashed #E5E7EB;
+        margin: 12px 0;
+    }
+
+    .salary-total {
+        padding: 12px 0;
+        font-size: 14px;
+        font-weight: 800;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: #FF6B35;
+    }
+
+    .payslip-footer {
+        background: #F9FAFB;
+        padding: 12px 16px;
+        border-top: 1px solid #E5E7EB;
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+    }
+
+    .btn-sm {
+        background: #EFF6FF;
+        color: #3B82F6;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 14px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all .15s;
+        font-family: 'Nunito', sans-serif;
+    }
+
+    .btn-sm:hover {
+        background: #DBEAFE;
+    }
+
+    /* Detail Modal */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.active {
+        display: flex;
+        animation: fadeIn .2s;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .modal-content {
+        background: #fff;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 600px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        padding: 24px;
+        border-bottom: 1px solid #E5E7EB;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h3 {
+        font-size: 16px;
+        font-weight: 800;
+        margin: 0;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+        color: #6B7280;
+    }
+
+    .modal-body {
+        padding: 24px;
+    }
+
+    .detail-section {
+        margin-bottom: 20px;
+    }
+
+    .detail-section h4 {
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: #6B7280;
+        margin-bottom: 12px;
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        font-size: 13px;
+        border-bottom: 1px solid #F3F4F6;
+    }
+
+    .detail-row label {
+        color: #6B7280;
+        font-weight: 500;
+    }
+
+    .detail-row .value {
+        font-weight: 700;
+        color: #1F2937;
+    }
+
+    .detail-total {
+        padding: 12px 0;
+        font-size: 15px;
+        font-weight: 800;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: #FF6B35;
+        border-top: 2px solid #FF6B35;
+        margin-top: 12px;
+    }
+
+    .no-data {
+        text-align: center;
+        padding: 60px 24px;
+        color: #9CA3AF;
+    }
+
+    .no-data i {
+        font-size: 48px;
+        margin-bottom: 16px;
+        color: #D1D5DB;
+    }
+
+    .no-data p {
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    @media (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+        }
+
+        .filter-group {
+            width: 100%;
+            flex-wrap: wrap;
+        }
+
+        .payslip-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .modal-content {
+            width: 95%;
+        }
+    }
+</style>
+
+<script th:fragment="custom-scripts" th:inline="javascript">
+    let payslipRaw = [];
+    let payslipPage = 1;
+
+    // Biến toàn cục từ Thymeleaf
+    const CURRENT_NV_ID = /*[[${nhanVienId}]]*/ "null";
+
+    // Hàm lấy JWT token theo từng tab (sessionStorage) + fallback URL
+    function getJwtToken() {
+        const fromSession = sessionStorage.getItem('token');
+        if (fromSession && fromSession !== 'null' && fromSession !== 'undefined') return fromSession;
+
+        const params = new URL(window.location.href).searchParams;
+        const fromUrl = params.get('access_token');
+        if (fromUrl && fromUrl !== 'null' && fromUrl !== 'undefined') {
+            sessionStorage.setItem('token', fromUrl);
+            return fromUrl;
+        }
+
+        // Fallback cookie (giữ tương thích luồng cũ)
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; jwt_token=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return null;
+    }
+
+    // Hàm tạo header Authorization chuẩn
+    function getAuthHeaders() {
+        const token = getJwtToken();
+        return {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+        };
+    }
+
+    function initPayslipFilters() {
+        const ySel = document.getElementById('yearFilter');
+        const mSel = document.getElementById('monthFilter');
+        if (ySel.dataset.inited === '1') return;
+        ySel.dataset.inited = '1';
+        const now = new Date();
+        const curY = now.getFullYear();
+        ySel.innerHTML = '<option value="">Tất cả năm</option>';
+        for (let i = 0; i < 5; i++) {
+            const y = curY - i;
+            ySel.appendChild(new Option('Năm ' + y, String(y)));
+        }
+        mSel.innerHTML = '<option value="">Tất cả tháng</option>';
+        for (let m = 1; m <= 12; m++) {
+            const mm = String(m).padStart(2, '0');
+            mSel.appendChild(new Option('Tháng ' + m, mm));
+        }
+    }
+
+    function parseThangNamParts(thangNam) {
+        if (!thangNam) return null;
+        const raw = String(thangNam).trim().replace('-', '/');
+        if (!raw.includes('/')) return null;
+        const [a, b] = raw.split('/');
+        const x = parseInt((a || '').trim(), 10);
+        const y = parseInt((b || '').trim(), 10);
+        if (Number.isNaN(x) || Number.isNaN(y)) return null;
+        if (x > 1000) return { year: x, month: y };
+        return { month: x, year: y };
+    }
+
+    function kyThangNamLabel(thangNam) {
+        const parts = parseThangNamParts(thangNam);
+        if (!parts) return thangNam || '—';
+        return `Tháng ${parts.month}/${parts.year}`;
+    }
+
+    function parseThangNamKey(thangNam) {
+        const parts = parseThangNamParts(thangNam);
+        if (!parts) return 0;
+        return (parts.year * 100) + parts.month;
+    }
+
+    function payslipDaThanhToan(p) {
+        const s = (p.trangThaiThanhToan || '').toUpperCase();
+        return s === 'DA_THANH_TOAN' || s === 'DA_CHOT' || s === 'FINALIZED';
+    }
+
+    function onPayslipLocalChange() {
+        payslipPage = 1;
+        renderPayslipCards();
+    }
+
+    function renderPayslipCards() {
+        const grid = document.getElementById('payslipGrid');
+        const pag = document.getElementById('payslipPagination');
+        if (!grid) return;
+
+        let list = payslipRaw.slice();
+        const sort = document.getElementById('payslipSort').value;
+        list.sort((a, b) => {
+            const ta = (a.tongLuong != null) ? Number(a.tongLuong) : 0;
+            const tb = (b.tongLuong != null) ? Number(b.tongLuong) : 0;
+            if (sort === 'tong_desc') return tb - ta;
+            if (sort === 'tong_asc') return ta - tb;
+            const ka = parseThangNamKey(a.thangNam);
+            const kb = parseThangNamKey(b.thangNam);
+            return sort === 'thang_asc' ? ka - kb : kb - ka;
+        });
+
+        const pageSize = Math.max(1, parseInt(document.getElementById('payslipPageSize').value, 10) || 6);
+        const total = list.length;
+        const pages = Math.max(1, Math.ceil(total / pageSize));
+        if (payslipPage > pages) payslipPage = pages;
+        const start = (payslipPage - 1) * pageSize;
+        const slice = list.slice(start, start + pageSize);
+
+        if (total === 0) {
+            grid.innerHTML = '<div class="no-data"><i class="fas fa-file-invoice-dollar"></i><p>Không có phiếu lương trong bộ lọc này.</p></div>';
+        } else {
+            grid.innerHTML = slice.map(payslip => {
+                const done = payslipDaThanhToan(payslip);
+                const status = done ? '✓ Đã thanh toán' : '⏳ Chưa thanh toán';
+                const statusClass = done ? '' : 'style="background: rgba(255,255,255,.3);"';
+                const safeId = (payslip.id || '').replace(/'/g, "\\'");
+                return `<div class="payslip-card">
+                    <div class="payslip-header">
+                        <div>
+                            <div class="payslip-month">${kyThangNamLabel(payslip.thangNam)}</div>
+                            <div class="payslip-year">Mã: ${payslip.id || '—'}</div>
+                        </div>
+                        <span class="payslip-status" ${statusClass}>${status}</span>
+                    </div>
+                    <div class="payslip-body">
+                        <div class="salary-line">
+                            <label>Tổng lương</label>
+                            <span class="value">${formatCurrency(payslip.tongLuong || 0)}</span>
+                        </div>
+                        <div class="salary-line">
+                            <label style="color:#D97706;">Phạt muộn</label>
+                            <span class="value" style="color:#D97706;">${formatCurrency(payslip.phatMuon || 0)}</span>
+                        </div>
+                        <div class="salary-line">
+                            <label style="color:#EF4444;">Nghỉ không phép</label>
+                            <span class="value" style="color:#EF4444;">${formatCurrency(payslip.nghiKhongPhep || 0)}</span>
+                        </div>
+                    </div>
+                    <div class="payslip-footer">
+                        <button type="button" class="btn-sm" onclick="viewPayslipDetail('${safeId}')">Chi tiết</button>
+                        ${done ? `<button type="button" class="btn-sm" style="background: #F3F4F6; color: #6B7280;" onclick="downloadPayslip('${safeId}')">Tải (.pdf)</button>` : ''}
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        if (pag) {
+            pag.innerHTML = `
+                <span>Hiển thị ${total === 0 ? 0 : start + 1}–${Math.min(start + pageSize, total)} / ${total}</span>
+                <div class="emp-pagination-btns">
+                    <button type="button" ${payslipPage <= 1 ? 'disabled' : ''} onclick="goPayslipPage(${payslipPage - 1})">← Trước</button>
+                    <span style="font-weight:700;color:#374151">Trang ${payslipPage}/${pages}</span>
+                    <button type="button" ${payslipPage >= pages ? 'disabled' : ''} onclick="goPayslipPage(${payslipPage + 1})">Sau →</button>
+                </div>`;
+        }
+    }
+
+    function goPayslipPage(p) {
+        payslipPage = Math.max(1, p);
+        renderPayslipCards();
+    }
+
+    async function reloadPayslips() {
+        payslipPage = 1;
+        const grid = document.getElementById('payslipGrid');
+        grid.innerHTML = '<div class="no-data"><i class="fas fa-spinner fa-spin"></i><p>Đang tải...</p></div>';
+        try {
+            const year = document.getElementById('yearFilter').value;
+            const month = document.getElementById('monthFilter').value;
+            let url = '/api/dashboard/employee/payslips';
+            const params = [];
+            if (year) params.push('year=' + encodeURIComponent(year));
+            if (month) params.push('month=' + encodeURIComponent(month));
+            if (params.length) url += '?' + params.join('&');
+            let response = await fetch(url, { headers: getAuthHeaders() });
+            let list = [];
+
+            if (response.ok) {
+                list = await response.json();
+            } else {
+                // Fallback endpoint để tránh mất dữ liệu nếu luồng dashboard bị lệch mapping
+                const fallback = await fetch('/api/payroll/my-payslips', { headers: getAuthHeaders() });
+                if (!fallback.ok) throw new Error('fetch');
+                list = await fallback.json();
+            }
+
+            payslipRaw = Array.isArray(list) ? list : [];
+            renderPayslipCards();
+        } catch (err) {
+            console.error('Lỗi khi tải phiếu lương:', err);
+            grid.innerHTML = '<div class="no-data"><i class="fas fa-exclamation-triangle"></i><p>Không thể tải dữ liệu phiếu lương. Vui lòng thử lại.</p></div>';
+            toast('Không thể tải dữ liệu phiếu lương. Vui lòng thử lại.', 'error');
+        }
+    }
+
+    function formatCurrency(amount) {
+        return new Intl.NumberFormat('vi-VN').format(amount || 0) + ' ₫';
+    }
+
+    async function viewPayslipDetail(payslipId) {
+        try {
+            document.getElementById('detailTitle').textContent = 'Chi Tiết Phiếu Lương';
+            document.getElementById('detailModal').classList.add('active');
+            const detailBody = document.getElementById('detailBody');
+            detailBody.innerHTML = '<div class="no-data"><i class="fas fa-spinner fa-spin"></i><p>Đang tải chi tiết phiếu lương...</p></div>';
+
+            const response = await fetch(`/api/dashboard/employee/payslips/${payslipId}`, { headers: getAuthHeaders() });
+            if (!response.ok) {
+                throw new Error('Không thể tải chi tiết phiếu lương');
+            }
+
+            const payslip = await response.json();
+
+            detailBody.innerHTML = `
+                <div class="detail-section">
+                    <h4>📋 Thông tin</h4>
+                    <div class="detail-row">
+                        <label>Nhân viên</label>
+                        <span class="value">${payslip.hoTen || '—'}</span>
+                    </div>
+                    <div class="detail-row">
+                        <label>Mã NV</label>
+                        <span class="value">${payslip.maNhanVien || '—'}</span>
+                    </div>
+                    <div class="detail-row">
+                        <label>Chức vụ</label>
+                        <span class="value">${payslip.chucVu || '—'}</span>
+                    </div>
+                    <div class="detail-row">
+                        <label>Phòng ban</label>
+                        <span class="value">${payslip.phongBan || '—'}</span>
+                    </div>
+                    <div class="detail-row">
+                        <label>Kỳ lương</label>
+                        <span class="value">${kyThangNamLabel(payslip.thangNam)}</span>
+                    </div>
+                    <div class="detail-row">
+                        <label>Mã phiếu</label>
+                        <span class="value">${payslip.id || '—'}</span>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h4>💰 Phiếu lương</h4>
+                    <div class="detail-row">
+                        <label>Tổng lương</label>
+                        <span class="value" style="color:#FF6B35;font-weight:800;">${formatCurrency(payslip.tongLuong || 0)}</span>
+                    </div>
+                    <div class="detail-row">
+                        <label>Phạt muộn</label>
+                        <span class="value">${formatCurrency(payslip.phatMuon || 0)}</span>
+                    </div>
+                    <div class="detail-row">
+                        <label>Nghỉ không phép</label>
+                        <span class="value">${formatCurrency(payslip.nghiKhongPhep || 0)}</span>
+                    </div>
+                    <div class="detail-row">
+                        <label>Trạng thái thanh toán</label>
+                        <span class="value">${payslip.trangThaiThanhToan || '—'}</span>
+                    </div>
+                </div>
+            `;
+        } catch (err) {
+            console.error('Lỗi khi tải chi tiết phiếu lương:', err);
+            const detailBody = document.getElementById('detailBody');
+            detailBody.innerHTML = '<div class="no-data"><i class="fas fa-exclamation-triangle"></i><p>Không thể tải chi tiết phiếu lương. Vui lòng thử lại.</p></div>';
+            toast('Không thể tải chi tiết phiếu lương. Vui lòng thử lại.', 'error');
+        }
+    }
+
+    function closeDetailModal() {
+        document.getElementById('detailModal').classList.remove('active');
+    }
+
+    async function downloadPayslip(payslipId) {
+        try {
+            toast('⬇️ Đang tải phiếu lương...', 'info');
+            const response = await fetch(`/api/dashboard/employee/payslips/${payslipId}/download`, { headers: getAuthHeaders() });
+            
+            if (!response.ok) {
+                throw new Error('Không thể tải phiếu lương');
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `payslip-${payslipId}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            
+            toast('✓ Phiếu lương đã được tải thành công!', 'success');
+        } catch (err) {
+            console.error('Lỗi khi tải phiếu lương:', err);
+            toast('Không thể tải phiếu lương. Vui lòng thử lại.', 'error');
+        }
+    }
+
+    document.getElementById('detailModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeDetailModal();
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        initPayslipFilters();
+        reloadPayslips();
+    });
+</script>
+
+</body>
+</html>

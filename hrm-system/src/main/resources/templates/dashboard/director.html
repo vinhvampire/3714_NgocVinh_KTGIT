@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/dashboard-layout :: html(content=~{::page-content}, styles=~{::custom-styles}, scripts=~{::custom-scripts})}"
+      lang="vi">
+<head>
+    <title>Director Dashboard</title>
+</head>
+<body>
+
+<th:block th:fragment="page-content">
+
+    <style th:fragment="custom-styles">
+        /* ── Chỉ giữ CSS riêng của trang Director, không duplicate layout ── */
+        .wlc {
+            display: flex; align-items: center; justify-content: space-between;
+            background: #fff; border: 1px solid var(--border); border-radius: var(--radius);
+            padding: 18px 22px; margin-bottom: 22px; box-shadow: var(--shadow);
+        }
+        .wlc-l { display: flex; align-items: center; gap: 14px; }
+        .wlc-av {
+            width: 48px; height: 48px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--pri), #ff9a70);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; font-weight: 800; color: #fff; flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(255,107,53,.28);
+        }
+        .wlc-nm  { font-size: 16px; font-weight: 800; }
+        .wlc-sub { font-size: 12px; color: var(--txt2); margin-top: 2px; }
+        .wlc-sub strong { color: var(--pri); font-weight: 700; }
+        .hdr-acts { display: flex; align-items: center; gap: 10px; }
+        .section-hidden { display: none !important; }
+
+        /* KPI GRID */
+        .kpi-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 22px; }
+        .kpi {
+            background: #fff; border: 1px solid var(--border); border-radius: var(--radius);
+            padding: 18px 20px; box-shadow: var(--shadow);
+            transition: box-shadow .2s, transform .2s;
+            animation: fu .4s ease both;
+        }
+        .kpi:hover { box-shadow: 0 4px 16px rgba(0,0,0,.10); transform: translateY(-2px); }
+        .kpi:nth-child(1){animation-delay:.05s} .kpi:nth-child(2){animation-delay:.10s}
+        .kpi:nth-child(3){animation-delay:.15s} .kpi:nth-child(4){animation-delay:.20s}
+        .kpi-top  { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        .kpi-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        .tb { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 20px; display: inline-flex; align-items: center; gap: 3px; }
+        .tb-up  { background: var(--ok-s);   color: var(--ok); }
+        .tb-dn  { background: var(--err-s);  color: var(--err); }
+        .tb-nu  { background: var(--warn-s); color: var(--warn); }
+        .kv { font-size: 26px; font-weight: 800; line-height: 1; margin-bottom: 5px; }
+        .kl { font-size: 12px; color: var(--txt2); font-weight: 600; margin-bottom: 10px; }
+        .kf { font-size: 11px; color: var(--txt2); padding-top: 10px; border-top: 1px solid var(--border); display: flex; align-items: center; }
+        .kf a { color: var(--pri); font-weight: 700; text-decoration: none; margin-left: auto; }
+        .kf a:hover { text-decoration: underline; }
+
+        /* CHART CARDS */
+        .row2     { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+        .full-row { margin-bottom: 14px; }
+        .cc {
+            background: #fff; border: 1px solid var(--border); border-radius: var(--radius);
+            padding: 20px 22px; box-shadow: var(--shadow); animation: fu .45s ease both;
+        }
+        .chart-box {
+            position: relative;
+            width: 100%;
+            height: 250px;
+        }
+        .chart-box.sm {
+            height: 190px;
+        }
+        .chart-box canvas {
+            width: 100% !important;
+            height: 100% !important;
+            display: block;
+        }
+        .row2 .cc:nth-child(1){animation-delay:.25s} .row2 .cc:nth-child(2){animation-delay:.30s}
+        .full-row .cc{animation-delay:.35s}
+        .cc-hd    { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+        .cc-title { font-size: 14px; font-weight: 800; }
+        .cc-sub   { font-size: 11px; color: var(--txt2); margin-top: 2px; }
+        .stat-row { display: flex; gap: 18px; padding: 10px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+        .sv { font-size: 17px; font-weight: 800; line-height: 1; }
+        .sl { font-size: 10px; font-weight: 700; color: var(--txt2); margin-top: 2px; text-transform: uppercase; letter-spacing: .5px; }
+
+        /* LEGEND */
+        .leg { display: flex; gap: 14px; margin-top: 10px; flex-wrap: wrap; }
+        .li  { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--txt2); font-weight: 600; }
+        .ll  { width: 16px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+        .lld { width: 16px; height: 0; border-top: 2.5px dashed; flex-shrink: 0; }
+        .clg { display: flex; gap: 12px; margin-top: 10px; }
+        .cli { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--txt2); }
+        .cld { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+        /* FILTER SELECT */
+        .flt {
+            background: #fff; border: 1.5px solid var(--border); color: var(--txt2);
+            font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 600;
+            padding: 5px 10px; border-radius: var(--radius); outline: none; cursor: pointer;
+        }
+        .flt:hover, .flt:focus { border-color: var(--pri); color: var(--pri); }
+
+        /* BUTTONS */
+        .btn-o {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 14px; border: 1.5px solid var(--border);
+            border-radius: var(--radius); background: #fff;
+            font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 600;
+            color: var(--txt2); cursor: pointer; transition: all .15s;
+        }
+        .btn-o:hover { border-color: var(--pri); color: var(--pri); }
+        .btn-p {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 16px; border: none; border-radius: var(--radius);
+            background: var(--pri); font-family: 'Nunito', sans-serif;
+            font-size: 12px; font-weight: 700; color: #fff; cursor: pointer; transition: background .15s;
+        }
+        .btn-p:hover { background: var(--pri-d); }
+
+        /* EMPTY STATE */
+        .empty {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 28px 16px; color: var(--txt2); gap: 6px; min-height: 175px;
+        }
+        .em-ic { font-size: 28px; opacity: .45; }
+        .em-tx { font-size: 13px; font-weight: 700; }
+        .em-sb { font-size: 11px; text-align: center; max-width: 220px; }
+
+        /* Director leaves table */
+        .leaves-empty-note { margin-top: -2px; font-size: 11px; color: var(--txt2); }
+        .leaves-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        .leaves-table th {
+            text-align: left;
+            padding: 10px 8px;
+            border-bottom: 1px solid var(--border);
+            color: var(--txt2);
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+        }
+        .leaves-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+        .st-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 800;
+            border: 1px solid var(--border);
+            color: var(--txt2);
+            background: #fff;
+            white-space: nowrap;
+        }
+        .st-badge.warn { border-color: rgba(245,158,11,.35); background: rgba(245,158,11,.10); color: var(--warn); }
+        .st-badge.ok   { border-color: rgba(16,185,129,.35); background: rgba(16,185,129,.10); color: var(--ok); }
+        .st-badge.err  { border-color: rgba(239,68,68,.35); background: rgba(239,68,68,.10); color: var(--err); }
+        .btn-sm-o { padding: 7px 10px; font-size: 11px; border-radius: 10px; }
+        .btn-sm-p { padding: 7px 12px; font-size: 11px; border-radius: 10px; }
+
+        @keyframes fu {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 1200px) {
+            .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 992px) {
+            .row2 { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 640px) {
+            .kpi-grid { grid-template-columns: 1fr; }
+            .wlc { flex-direction: column; align-items: flex-start; gap: 12px; }
+            .hdr-acts { width: 100%; }
+        }
+    </style>
+
+    <!-- Welcome Banner -->
+    <div class="wlc">
+        <div class="wlc-l">
+            <div class="wlc-av" th:text="${#strings.substring(username,0,1).toUpperCase()}">D</div>
+            <div>
+                <div class="wlc-nm">Xin chào, <span th:text="${username}">Director</span> 👋</div>
+                <div class="wlc-sub">
+                    Có <strong id="wb-pending">—</strong> đơn phép chờ xử lý &amp;
+                    <strong id="wb-payroll">—</strong> bảng lương chưa chốt
+                </div>
+            </div>
+        </div>
+        <div class="hdr-acts">
+            <button class="btn-o" type="button" onclick="goDirectorSchedule()">🗓 Xem lịch</button>
+            <button class="btn-p" type="button" onclick="goDirectorNewRequest()">+ Yêu cầu mới</button>
+        </div>
+    </div>
+
+    <!-- KPI Grid -->
+    <!-- TODO: load từ /api/dashboard/director/kpi -->
+    <div class="kpi-grid dir-section" data-tab="dashboard kpi">
+        <div class="kpi">
+            <div class="kpi-top">
+                <div class="kpi-icon" style="background:var(--pri-s)">👥</div>
+                <span class="tb tb-nu" id="kpi-turn-badge">—%</span>
+            </div>
+            <div class="kv" id="kpi-total">—</div>
+            <div class="kl">Tổng nhân viên</div>
+            <div class="kf">Đang hoạt động <a href="javascript:void(0)" onclick="goDirectorSection('sec-trend')">Xem tất cả →</a></div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-top">
+                <div class="kpi-icon" style="background:var(--ok-s)">🌱</div>
+                <span class="tb tb-up">Tháng này</span>
+            </div>
+            <div class="kv" style="color:var(--ok)" id="kpi-new">—</div>
+            <div class="kl">Nhân viên mới</div>
+            <div class="kf">So với đầu tháng <a href="javascript:void(0)" onclick="goDirectorSection('sec-trend')">Xem chi tiết →</a></div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-top">
+                <div class="kpi-icon" style="background:var(--warn-s)">📉</div>
+                <span class="tb tb-nu">—%</span>
+            </div>
+            <div class="kv" style="color:var(--warn)" id="kpi-turnover">—%</div>
+            <div class="kl">Tỉ lệ nghỉ việc</div>
+            <div class="kf">Tháng này <a href="javascript:void(0)" onclick="goDirectorKpi()">Xem chi tiết →</a></div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-top">
+                <div class="kpi-icon" style="background:var(--inf-s)">🎯</div>
+                <span class="tb tb-up">Đang mở</span>
+            </div>
+            <div class="kv" style="color:var(--inf)" id="kpi-open">—</div>
+            <div class="kl">Vị trí tuyển dụng</div>
+            <div class="kf">Tin đang mở <a href="javascript:void(0)" onclick="goDirectorKpi()">Xem tất cả →</a></div>
+        </div>
+    </div>
+
+    <!-- Chart Row: Biến động nhân sự + Chuyên cần -->
+    <div class="row2 dir-section" data-tab="dashboard reports" id="sec-trend">
+
+        <!-- TODO: load từ /api/dashboard/director/headcount-trend?months=6 -->
+        <div class="cc">
+            <div class="cc-hd">
+                <div>
+                    <div class="cc-title">Biến động nhân sự</div>
+                    <div class="cc-sub">Tổng nhân viên &amp; mới vào — 6 tháng</div>
+                </div>
+                <button class="btn-o" style="font-size:11px;padding:5px 10px">📅 6 tháng</button>
+            </div>
+            <div class="stat-row">
+                <div><div class="sv" id="st-total">—</div><div class="sl">Hiện tại</div></div>
+                <div><div class="sv" style="color:var(--ok)" id="st-new">—</div><div class="sl">Mới vào</div></div>
+                <div><div class="sv" style="color:var(--err)" id="st-left">—</div><div class="sl">Nghỉ việc</div></div>
+            </div>
+            <div class="empty" id="trend-empty">
+                <div class="em-ic">📈</div>
+                <div class="em-tx">Chưa có dữ liệu nhân sự</div>
+                <div class="em-sb">Kết nối API module B để hiển thị</div>
+            </div>
+            <div class="chart-box sm">
+                <canvas id="chart-trend" style="display:none"></canvas>
+            </div>
+            <div class="leg">
+                <div class="li"><div class="ll" style="background:var(--pri)"></div>Tổng NV</div>
+                <div class="li"><div class="lld" style="border-color:var(--ok)"></div>Mới vào</div>
+            </div>
+        </div>
+
+        <!-- TODO: load từ /api/dashboard/director/attendance-by-dept -->
+        <div class="cc">
+            <div class="cc-hd">
+                <div>
+                    <div class="cc-title">Chuyên cần theo phòng ban</div>
+                    <div class="cc-sub">% ngày có mặt / tổng ngày làm chuẩn</div>
+                </div>
+                <select class="flt" id="filter-month" onchange="reloadAtt(this.value)">
+                    <!-- options động sẽ được tạo bằng JS -->
+                </select>
+            </div>
+            <div class="empty" id="att-empty">
+                <div class="em-ic">📋</div>
+                <div class="em-tx">Chưa có dữ liệu chấm công</div>
+                <div class="em-sb">Kết nối API module C để hiển thị</div>
+            </div>
+            <div class="chart-box sm">
+                <canvas id="chart-att" style="display:none"></canvas>
+            </div>
+            <div class="clg">
+                <div class="cli"><div class="cld" style="background:var(--ok)"></div>≥ 95% Tốt</div>
+                <div class="cli"><div class="cld" style="background:var(--warn)"></div>85–95% TB</div>
+                <div class="cli"><div class="cld" style="background:var(--err)"></div>&lt; 85% Yếu</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending leaves for Director -->
+    <div class="full-row dir-section" data-tab="dashboard reports" id="sec-leaves">
+        <div class="cc">
+            <div class="cc-hd">
+                <div>
+                    <div class="cc-title">Đơn nghỉ phép chờ quản lý duyệt</div>
+                    <div class="cc-sub">Theo workflow xử lý được gán cho quản lý trực tiếp</div>
+                </div>
+                <button class="btn-o btn-sm-o" onclick="loadPendingLeaves()">Làm mới</button>
+            </div>
+
+            <div class="empty" id="leaves-empty" style="display:flex">
+                <div class="em-ic">🧾</div>
+                <div class="em-tx">Chưa có đơn chờ duyệt</div>
+                <div class="leaves-empty-note">Khi phát sinh đơn theo workflow, danh sách sẽ hiển thị ở đây.</div>
+            </div>
+
+            <div id="leaves-table-wrap" style="display:none">
+                <table class="leaves-table">
+                    <thead>
+                    <tr>
+                        <th>Nhân viên</th>
+                        <th>Loại phép</th>
+                        <th>Thời gian</th>
+                        <th>Trạng thái</th>
+                        <th>Thao tác</th>
+                    </tr>
+                    </thead>
+                    <tbody id="leaves-pending-body">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart: Biến động quỹ lương -->
+    <!-- TODO: load từ /api/dashboard/director/salary-trend?months=6 -->
+    <div class="full-row dir-section" data-tab="dashboard reports kpi" id="sec-salary">
+        <div class="cc">
+            <div class="cc-hd">
+                <div>
+                    <div class="cc-title">Biến động quỹ lương</div>
+                    <div class="cc-sub">Tổng lương thực lĩnh toàn công ty (VNĐ) — 6 tháng gần nhất</div>
+                </div>
+                <div style="text-align:right">
+                    <div style="font-size:18px;font-weight:800;color:var(--pri)" id="sal-total">— đ</div>
+                    <div style="font-size:11px;color:var(--txt2);margin-top:1px" id="sal-month-label">Tháng hiện tại</div>
+                </div>
+            </div>
+            <div class="empty" id="sal-empty">
+                <div class="em-ic">💰</div>
+                <div class="em-tx">Chưa có dữ liệu lương</div>
+                <div class="em-sb">Kết nối API module D để hiển thị</div>
+            </div>
+            <div class="chart-box">
+                <canvas id="chart-sal" style="display:none"></canvas>
+            </div>
+            <div class="leg" style="margin-top:10px">
+                <div class="li"><div class="ll" style="background:var(--pri)"></div>Tổng quỹ lương</div>
+                <div class="li"><div class="lld" style="border-color:var(--teal)"></div>Trung bình / người</div>
+            </div>
+        </div>
+    </div>
+
+</th:block>
+
+<script th:fragment="custom-scripts">
+    /* ── Chart.js defaults ── */
+    Chart.defaults.color       = '#9CA3AF';
+    Chart.defaults.borderColor = '#F3F4F6';
+    Chart.defaults.font.family = "'Nunito',sans-serif";
+    Chart.defaults.font.size   = 11;
+    Chart.defaults.font.weight = '600';
+
+    /* ── Formatter VNĐ ── */
+    const vnd = v => {
+        if (!v) return '0 đ';
+        if (v >= 1e9) return (v/1e9).toFixed(2) + 'B đ';
+        if (v >= 1e6) return (v/1e6).toFixed(0)  + 'M đ';
+        return v.toLocaleString('vi-VN') + ' đ';
+    };
+
+    /* ── Render KPI ── */
+    function renderKPI(d) {
+        document.getElementById('kpi-total').textContent    = (d.totalActive    || 0).toLocaleString('vi-VN');
+        document.getElementById('kpi-new').textContent      = '+' + (d.newThisMonth  || 0);
+        document.getElementById('kpi-turnover').textContent = (d.turnoverRate   || 0) + '%';
+        document.getElementById('kpi-turn-badge').textContent = (d.turnoverRate || 0) + '%';
+        const tr = d.turnoverRate || 0;
+        document.getElementById('kpi-turn-badge').className = 'tb ' + (tr > 5 ? 'tb-dn' : tr > 2 ? 'tb-nu' : 'tb-up');
+        if (d.pendingLeaves   != null) document.getElementById('wb-pending').textContent = d.pendingLeaves;
+        if (d.unclosedPayroll != null) document.getElementById('wb-payroll').textContent = d.unclosedPayroll;
+    }
+
+    /* ── Render Trend chart ── */
+    let trendCh = null;
+    function renderTrend(data) {
+        if (!data || !data.length) return;
+        const last = data[data.length - 1];
+        document.getElementById('st-total').textContent = (last.totalActive || 0).toLocaleString('vi-VN');
+        document.getElementById('st-new').textContent   = '+' + (last.newJoined || 0);
+        document.getElementById('st-left').textContent  = (last.left || 0).toLocaleString('vi-VN');
+        document.getElementById('trend-empty').style.display = 'none';
+        document.getElementById('chart-trend').style.display = 'block';
+        if (trendCh) trendCh.destroy();
+        trendCh = new Chart(document.getElementById('chart-trend'), {
+            type: 'line',
+            data: {
+                labels: data.map(d => d.label),
+                datasets: [
+                    { label: 'Tổng NV',  data: data.map(d => d.totalActive),
+                        borderColor: '#FF6B35', backgroundColor: 'rgba(255,107,53,0.08)',
+                        borderWidth: 2.5, pointRadius: 5, fill: true, tension: .4,
+                        pointBackgroundColor: '#FF6B35', pointBorderColor: '#fff', pointBorderWidth: 2 },
+                    { label: 'Mới vào', data: data.map(d => d.newJoined),
+                        borderColor: '#10B981', backgroundColor: 'transparent',
+                        borderWidth: 2, borderDash: [6,3], pointRadius: 4, tension: .4,
+                        pointBackgroundColor: '#10B981', pointBorderColor: '#fff', pointBorderWidth: 2 },
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false }, border: { display: false } },
+                    y: { grid: { color: '#F3F4F6' }, border: { display: false }, beginAtZero: false, ticks: { padding: 8 } }
+                }
+            }
+        });
+    }
+
+    /* ── Render Attendance chart ── */
+    let attCh = null;
+    function renderAtt(data) {
+        if (!data || !data.length) return;
+        document.getElementById('att-empty').style.display = 'none';
+        document.getElementById('chart-att').style.display = 'block';
+        if (attCh) attCh.destroy();
+        attCh = new Chart(document.getElementById('chart-att'), {
+            type: 'bar',
+            data: {
+                labels: data.map(d => d.departmentName),
+                datasets: [{ data: data.map(d => d.attendanceRate),
+                    backgroundColor: data.map(d =>
+                        d.attendanceRate >= 95 ? 'rgba(16,185,129,.85)' :
+                            d.attendanceRate >= 85 ? 'rgba(245,158,11,.85)' : 'rgba(239,68,68,.85)'),
+                    borderRadius: 6, borderSkipped: false }]
+            },
+            options: { responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.parsed.y}%` } } },
+                scales: {
+                    x: { grid: { display: false }, border: { display: false } },
+                    y: { min: 0, max: 100, grid: { color: '#F3F4F6' }, border: { display: false },
+                        ticks: { callback: v => v + '%', padding: 8 } }
+                }
+            }
+        });
+    }
+
+    function reloadAtt(monthYearVal) {
+        return reloadAttWithFilter(monthYearVal);
+    }
+
+    /* ── Render Salary chart ── */
+    let salCh = null;
+    function renderSalary(data) {
+        if (!data || !data.length || data.every(d => !d.totalNetSalary)) return;
+        const last = data[data.length - 1];
+        document.getElementById('sal-total').textContent = vnd(last.totalNetSalary);
+        document.getElementById('sal-empty').style.display = 'none';
+        document.getElementById('chart-sal').style.display = 'block';
+        if (salCh) salCh.destroy();
+        salCh = new Chart(document.getElementById('chart-sal'), {
+            type: 'line',
+            data: {
+                labels: data.map(d => d.label),
+                datasets: [
+                    { label: 'Tổng quỹ lương', data: data.map(d => d.totalNetSalary),
+                        borderColor: '#FF6B35', backgroundColor: 'rgba(255,107,53,0.08)',
+                        borderWidth: 2.5, fill: true, tension: .4,
+                        pointRadius: 4, pointBackgroundColor: '#FF6B35', pointBorderColor: '#fff', pointBorderWidth: 2 },
+                    { label: 'TB/người', data: data.map(d => d.avgNetSalary),
+                        borderColor: '#0D9488', backgroundColor: 'transparent',
+                        borderWidth: 2, borderDash: [6,3], tension: .4, pointRadius: 3, yAxisID: 'y2' },
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { display: false },
+                    tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${vnd(c.parsed.y)}` } } },
+                scales: {
+                    x: { grid: { display: false }, border: { display: false } },
+                    y: { grid: { color: '#F3F4F6' }, border: { display: false }, ticks: { callback: v => vnd(v), padding: 8 } },
+                    y2: { position: 'right', display: false, grid: { drawOnChartArea: false } }
+                }
+            }
+        });
+    }
+
+    /* ── Helpers ── */
+    function initAttendanceMonths() {
+        const sel = document.getElementById('filter-month');
+        if (!sel) return;
+
+        const now = new Date();
+        const currentVal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+        const opts = [];
+        // 6 tháng gần nhất: hiện tại -> lùi 5 tháng
+        for (let i = 0; i < 6; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const y = d.getFullYear();
+            const m = d.getMonth() + 1;
+            const val = `${y}-${String(m).padStart(2, '0')}`;
+            const label = `Tháng ${m}/${y}${val === currentVal ? ' (Hiện tại)' : ''}`;
+            opts.push({ val, label });
+        }
+
+        sel.innerHTML = opts.map(o => `<option value="${o.val}">${o.label}</option>`).join('');
+    }
+
+    function esc(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    async function loadDirectorKpi() {
+        const headers = getAuthHeaders();
+        try {
+            const kpiResponse = await fetch('/api/dashboard/director/kpi', { headers });
+            if (!kpiResponse.ok) return;
+
+            const kpiData = await kpiResponse.json();
+            renderKPI(kpiData);
+        } catch (err) {
+            console.error('Lỗi nạp KPI:', err);
+        }
+    }
+
+    async function loadPendingLeaves() {
+        const headers = getAuthHeaders();
+        const empty = document.getElementById('leaves-empty');
+        const wrap = document.getElementById('leaves-table-wrap');
+        const tbody = document.getElementById('leaves-pending-body');
+
+        try {
+            const r = await fetch('/api/dashboard/director/leaves/pending', { headers });
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const list = await r.json();
+
+            if (!list || !list.length) {
+                if (empty) empty.style.display = 'flex';
+                if (wrap) wrap.style.display = 'none';
+                if (tbody) tbody.innerHTML = '';
+                return;
+            }
+
+            const take = list.slice(0, 12);
+            tbody.innerHTML = take.map(d => {
+                const st = (d.trangThai || '').toUpperCase().trim();
+                const badgeCls =
+                    st === 'DA_DUYET' ? 'ok' :
+                        st === 'TU_CHOI' ? 'err' : 'warn';
+                const badgeLabel =
+                    st === 'CHO_QL_DUYET' ? 'Chờ quản lý duyệt' :
+                        st === 'CHO_HR_XAC_NHAN' ? 'Chờ HR xác nhận' :
+                            st === 'DA_DUYET' ? 'Đã duyệt' :
+                                st === 'TU_CHOI' ? 'Từ chối' : (d.trangThai || '—');
+                const leaveTypeLabel =
+                    (d.loaiPhep || '').toUpperCase().trim() === 'PHEP_NAM' ? 'Phép năm' :
+                        (d.loaiPhep || '').toUpperCase().trim() === 'PHEP_OM' ? 'Phép ốm' :
+                            (d.loaiPhep || '').toUpperCase().trim() === 'NGHI_LE' ? 'Nghỉ lễ' :
+                                'Khác';
+                return `
+                    <tr>
+                        <td>${esc(d.tenNV)}</td>
+                        <td>${esc(leaveTypeLabel)}</td>
+                        <td>${esc(d.tuNgay)} → ${esc(d.denNgay)}</td>
+                        <td><span class="st-badge ${badgeCls}">${esc(badgeLabel)}</span></td>
+                        <td style="display:flex;gap:8px;flex-wrap:wrap">
+                            <button class="btn-p btn-sm-p" onclick="approveLeave(${d.id})">Duyệt</button>
+                            <button class="btn-o btn-sm-o" onclick="rejectLeave(${d.id})">Từ chối</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            if (empty) empty.style.display = 'none';
+            if (wrap) wrap.style.display = 'block';
+        } catch (err) {
+            console.error('Lỗi nạp đơn chờ duyệt:', err);
+        }
+    }
+
+    async function approveLeave(leaveId) {
+        if (!confirm('Duyệt đơn nghỉ phép này?')) return;
+        const headers = getAuthHeaders();
+        try {
+            const r = await fetch(`/api/dashboard/director/leaves/${leaveId}/approve`, { method: 'PUT', headers });
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            await loadDirectorKpi();
+            await loadPendingLeaves();
+            if (typeof toast === 'function') toast('Đã duyệt đơn', 'success');
+        } catch (err) {
+            console.error('approveLeave error', err);
+            alert('Không thể duyệt đơn.');
+        }
+    }
+
+    async function rejectLeave(leaveId) {
+        const reason = prompt('Nhập lý do từ chối:');
+        if (reason == null) return;
+        const headers = getAuthHeaders();
+        try {
+            const r = await fetch(`/api/dashboard/director/leaves/${leaveId}/reject`, {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify({ reason })
+            });
+            if (!r.ok) {
+                const txt = await r.text().catch(() => '');
+                throw new Error(`HTTP ${r.status}: ${txt}`);
+            }
+            await loadDirectorKpi();
+            await loadPendingLeaves();
+            if (typeof toast === 'function') toast('Đã từ chối đơn', 'warning');
+        } catch (err) {
+            console.error('rejectLeave error', err);
+            alert('Không thể từ chối đơn.');
+        }
+    }
+
+    /* ── Init ── */
+    function activateDirectorSubPage() {
+        const parts = window.location.pathname.split('/').filter(Boolean);
+        const subPage = parts.length >= 3 ? (parts[2] || '').toLowerCase() : '';
+        const sections = document.querySelectorAll('.dir-section');
+        if (!subPage || subPage === 'director') {
+            sections.forEach(el => el.classList.remove('section-hidden'));
+            return;
+        }
+        sections.forEach(el => {
+            const tabs = (el.dataset.tab || '').toLowerCase().split(/\s+/).filter(Boolean);
+            if (tabs.includes(subPage)) el.classList.remove('section-hidden');
+            else el.classList.add('section-hidden');
+        });
+    }
+
+    function withAccessToken(path) {
+        const url = new URL(path, window.location.origin);
+        const token = getJwtToken();
+        if (token) url.searchParams.set('access_token', token);
+        return url.pathname + url.search;
+    }
+
+    function goDirectorSection(sectionId) {
+        // Dùng dạng string để tránh trường hợp hash bị rơi khi điều hướng.
+        const base = withAccessToken('/dashboard/director/reports');
+        window.location.href = sectionId ? (base + '#' + sectionId) : base;
+    }
+
+    function goDirectorKpi() {
+        window.location.href = withAccessToken('/dashboard/director/kpi');
+    }
+
+    function scrollToHashIfAny() {
+        const hash = (window.location.hash || '').replace('#', '').trim();
+        if (!hash) return;
+        const el = document.getElementById(hash);
+        if (!el) return;
+        // Delay 1 tick để đảm bảo section đã được show/hide xong trước khi scroll.
+        setTimeout(() => {
+            try { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { el.scrollIntoView(); }
+        }, 0);
+    }
+
+    // Workflow: Director theo dõi lịch/chuyên cần ở tab báo cáo
+    function goDirectorSchedule() {
+        window.location.href = withAccessToken('/dashboard/director/reports');
+    }
+
+    // Workflow: Director khởi tạo/đề xuất yêu cầu qua tab KPI (nút action chính)
+    function goDirectorNewRequest() {
+        window.location.href = withAccessToken('/dashboard/director/kpi');
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        activateDirectorSubPage();
+        scrollToHashIfAny();
+        // Cập nhật label tháng hiện tại
+        const now = new Date();
+        document.getElementById('sal-month-label').textContent =
+            'Tháng ' + (now.getMonth()+1) + '/' + now.getFullYear();
+
+        const headers = getAuthHeaders();
+
+        initAttendanceMonths();
+
+        // Director KPIs
+        await loadDirectorKpi();
+        await loadPendingLeaves();
+
+        // Headcount trend
+        try {
+            const trendResp = await fetch('/api/dashboard/director/headcount-trend', { headers });
+            if (trendResp.ok) {
+                const trendData = await trendResp.json();
+                renderTrend(trendData);
+            }
+        } catch (err) {
+            console.error('Lỗi nạp trend:', err);
+        }
+
+        // Attendance by department
+        await reloadAttWithFilter(document.getElementById('filter-month')?.value);
+
+        // Salary trend
+        try {
+            const salResp = await fetch('/api/dashboard/director/salary-trend', { headers });
+            if (salResp.ok) {
+                const salData = await salResp.json();
+                // map service fields to chart-friendly
+                const mapped = salData.map(item => ({
+                    label: item.label,
+                    totalNetSalary: item.total,
+                    avgNetSalary: item.averagePerEmployee
+                }));
+                renderSalary(mapped);
+            }
+        } catch (err) {
+            console.error('Lỗi nạp lương:', err);
+        }
+    });
+
+    async function reloadAttWithFilter(monthYearVal) {
+        const headers = getAuthHeaders();
+        document.getElementById('att-empty').style.display = 'flex';
+        document.getElementById('chart-att').style.display = 'none';
+        if (attCh) { attCh.destroy(); attCh = null; }
+
+        try {
+            const now = new Date();
+            let year = now.getFullYear();
+            let month = now.getMonth() + 1;
+
+            if (monthYearVal) {
+                const parts = String(monthYearVal).split('-');
+                if (parts.length === 2) {
+                    year = parseInt(parts[0], 10);
+                    month = parseInt(parts[1], 10);
+                }
+            }
+
+            const url = `/api/dashboard/director/attendance-by-dept?month=${month}&year=${year}`;
+            const r = await fetch(url, { headers });
+            if (r.ok) {
+                const data = await r.json();
+                renderAtt(data);
+            }
+        } catch (err) {
+            console.error('Lỗi nạp attendance-by-dept:', err);
+        }
+    }
+
+</script>
+
+</body>
+</html>

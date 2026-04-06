@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/dashboard-layout :: html(content=~{::page-content}, styles=~{dashboard/hr :: custom-styles}, scripts=~{::custom-scripts})}"
+      lang="vi">
+<head>
+    <title>HR Overview</title>
+</head>
+<body>
+
+<th:block th:fragment="page-content">
+
+    <div class="hr-banner">
+        <div class="hb-left">
+            <h2><i class="fa-solid fa-shield-halved" style="margin-right:8px;opacity:.8"></i>HR Overview</h2>
+            <p>Tổng quan nhanh về nhân sự, chuyên cần và đơn phép chờ xử lý.</p>
+            <div class="hb-date" id="dateTime">...</div>
+        </div>
+        <div class="hb-right">
+            <div class="hb-pill">
+                <div class="num" id="bannerTotalNV">—</div>
+                <div class="lbl">Tổng NV</div>
+            </div>
+            <div class="hb-pill">
+                <div class="num" id="bannerTotalDept" style="color:#c4b5fd">—</div>
+                <div class="lbl">Phòng ban</div>
+            </div>
+            <div class="hb-pill">
+                <div class="num" id="bannerPendingLeave" style="color:#fcd34d">—</div>
+                <div class="lbl">Đơn chờ HR</div>
+            </div>
+            <div class="hb-pill">
+                <div class="num" id="bannerAttendance" style="color:#6ee7b7">—</div>
+                <div class="lbl">Chuyên cần</div>
+            </div>
+        </div>
+    </div>
+
+    <th:block th:replace="~{fragments/hr-subnav :: subnav}"></th:block>
+
+    <div class="g4" id="kpiGrid">
+        <div class="kpi-card">
+            <div class="kpi-icon" style="background:var(--warn-s);color:var(--warn)"><i class="fa-solid fa-file-circle-exclamation"></i></div>
+            <div>
+                <div class="kpi-lbl">Đơn phép chờ HR duyệt</div>
+                <div class="kpi-val" id="kpiPendingLeave">—</div>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon" style="background:var(--err-s);color:var(--err)"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            <div>
+                <div class="kpi-lbl">Chấm công thiếu dữ liệu</div>
+                <div class="kpi-val" id="kpiMissingAttendance">—</div>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon" style="background:var(--inf-s);color:var(--inf)"><i class="fa-solid fa-money-bill-wave"></i></div>
+            <div>
+                <div class="kpi-lbl">Lương chưa chốt</div>
+                <div class="kpi-val" id="kpiUnconfirmedSalary">—</div>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon" style="background:var(--hr-s);color:var(--hr)"><i class="fa-solid fa-file-user"></i></div>
+            <div>
+                <div class="kpi-lbl">CV ứng viên chờ duyệt</div>
+                <div class="kpi-val" id="kpiPendingCV">—</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="g2">
+        <div class="card">
+            <div class="card-hd">
+                <div class="card-title"><i class="fa-solid fa-chart-pie" style="color:var(--ok);margin-right:6px"></i>Tỉ lệ chuyên cần</div>
+            </div>
+            <div class="filter-row">
+                <label>Tháng:</label>
+                <select class="filter-select" id="donutFilter" onchange="loadDonutData()">
+                    <option value="">-- Chọn tháng --</option>
+                </select>
+            </div>
+            <div class="donut-wrap">
+                <canvas id="donutChart" style="max-width:200px;max-height:200px"></canvas>
+                <div class="donut-center">
+                    <div class="big" id="donutCenter">—</div>
+                    <div class="sm">có mặt</div>
+                </div>
+            </div>
+            <div class="donut-legend">
+                <div class="legend-item"><div class="legend-dot" style="background:var(--ok)"></div><span style="color:var(--txt2)">Đúng giờ</span><span class="legend-val" id="legendOnTime">—</span></div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--warn)"></div><span style="color:var(--txt2)">Đi muộn</span><span class="legend-val" id="legendLate">—</span></div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--inf)"></div><span style="color:var(--txt2)">Nghỉ có phép</span><span class="legend-val" id="legendPermitted">—</span></div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--err)"></div><span style="color:var(--txt2)">Vắng</span><span class="legend-val" id="legendAbsent">—</span></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-hd">
+                <div class="card-title"><i class="fa-solid fa-list-check" style="color:var(--hr);margin-right:6px"></i>5 đơn phép mới nhất</div>
+            </div>
+            <table class="leave-table">
+                <thead>
+                <tr>
+                    <th>Nhân viên</th>
+                    <th>Loại phép</th>
+                    <th>Thời gian</th>
+                    <th>Trạng thái</th>
+                </tr>
+                </thead>
+                <tbody id="overviewLeaveBody">
+                <tr>
+                    <td colspan="4">
+                        <div class="empty-state">
+                            <i class="fa-solid fa-spinner fa-spin"></i>
+                            <p>Đang tải đơn phép...</p>
+                        </div>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</th:block>
+
+<script th:fragment="custom-scripts">
+    let donutChartInstance = null;
+
+    function tick() {
+        const d = new Date();
+        const days = ['Chủ nhật','Thứ hai','Thứ ba','Thứ tư','Thứ năm','Thứ sáu','Thứ bảy'];
+        const str = days[d.getDay()] + ', ' +
+            String(d.getDate()).padStart(2,'0') + '/' +
+            String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear() +
+            ' — ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+        document.getElementById('dateTime').textContent = str;
+    }
+
+    async function apiFetch(url, options = {}) {
+        const defaultOptions = { headers: getAuthHeaders(), ...options };
+        const response = await fetch(url, defaultOptions);
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        return response;
+    }
+
+    async function apiFetchJson(url, options = {}) {
+        return (await apiFetch(url, options)).json();
+    }
+
+    async function loadStats() {
+        try {
+            const data = await apiFetchJson('/api/dashboard/hr/stats');
+            document.getElementById('bannerTotalNV').textContent = data.totalEmployees ?? '—';
+            document.getElementById('bannerTotalDept').textContent = data.totalDepartments ?? '—';
+            document.getElementById('bannerPendingLeave').textContent = data.pendingLeaves ?? '—';
+            document.getElementById('bannerAttendance').textContent = `${100 - (data.missingAttendance || 0)}%`;
+            document.getElementById('kpiPendingLeave').textContent = data.pendingLeaves ?? '—';
+            document.getElementById('kpiMissingAttendance').textContent = data.missingAttendance ?? '—';
+            document.getElementById('kpiUnconfirmedSalary').textContent = data.unconfirmedSalary ?? '—';
+            document.getElementById('kpiPendingCV').textContent = '—';
+        } catch (e) {
+            console.error('loadStats error', e);
+        }
+    }
+
+    async function initDonutMonths() {
+        const sel = document.getElementById('donutFilter');
+        const now = new Date();
+        sel.innerHTML = `<option value="">-- Chọn tháng --</option>`;
+        for (let i = 0; i < 4; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+            sel.appendChild(new Option(`Tháng ${d.getMonth()+1}/${d.getFullYear()}`, val));
+        }
+        sel.selectedIndex = 1;
+        loadDonutData();
+    }
+
+    async function loadDonutData() {
+        const month = document.getElementById('donutFilter').value;
+        if (!month) return;
+        try {
+            const data = await apiFetchJson(`/api/dashboard/hr/attendance/summary?month=${month}`);
+            renderDonut(data);
+        } catch (e) {
+            console.error('loadDonutData error', e);
+        }
+    }
+
+    function renderDonut(data) {
+        const ctx = document.getElementById('donutChart').getContext('2d');
+        const vals = [data.presentPct || 0, data.latePct || 0, data.permittedPct || 0, data.absentPct || 0];
+        document.getElementById('donutCenter').textContent = `${(data.presentPct || 0) + (data.latePct || 0)}%`;
+        document.getElementById('legendOnTime').textContent = `${data.presentPct ?? 0}%`;
+        document.getElementById('legendLate').textContent = `${data.latePct ?? 0}%`;
+        document.getElementById('legendPermitted').textContent = `${data.permittedPct ?? 0}%`;
+        document.getElementById('legendAbsent').textContent = `${data.absentPct ?? 0}%`;
+
+        if (donutChartInstance) donutChartInstance.destroy();
+        donutChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Đúng giờ', 'Đi muộn', 'Nghỉ phép', 'Vắng'],
+                datasets: [{ data: vals, backgroundColor: ['#10B981','#F59E0B','#3B82F6','#EF4444'], borderWidth: 0 }]
+            },
+            options: { responsive: true, cutout: '70%', plugins: { legend: { display: false } } }
+        });
+    }
+
+    async function loadRecentLeaves() {
+        const tbody = document.getElementById('overviewLeaveBody');
+        try {
+            const list = await apiFetchJson('/api/dashboard/hr/leaves/pending');
+            if (!list || list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-circle-check" style="color:var(--ok);opacity:.5"></i><p>Không có đơn phép chờ</p></div></td></tr>`;
+                return;
+            }
+            const take5 = list.slice(0, 5);
+            tbody.innerHTML = take5.map(d => `
+                <tr>
+                    <td>${d.tenNV || '—'}</td>
+                    <td>${d.loaiPhep || '—'}</td>
+                    <td>${d.tuNgay || '—'} → ${d.denNgay || '—'}</td>
+                    <td><span class="st-badge st-warn">${d.trangThai === 'CHO_HR_XAC_NHAN' ? 'Chờ HR xác nhận' : (d.trangThai || '—')}</span></td>
+                </tr>
+            `).join('');
+        } catch (e) {
+            console.error('loadRecentLeaves error', e);
+            tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-triangle-exclamation" style="color:var(--err);opacity:.5"></i><p>Lỗi tải dữ liệu</p></div></td></tr>`;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        tick();
+        loadStats();
+        initDonutMonths();
+        loadRecentLeaves();
+    });
+</script>
+
+</body>
+</html>
+

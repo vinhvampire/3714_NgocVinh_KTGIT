@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # Cấu hình Database MySQL 
+  db:
+    image: mysql:8.0
+    container_name: websitequanlynhansu-db-1
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_DATABASE=hrm_system
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - hrm-network
+    # Kiểm tra trạng thái DB để App đợi đến khi DB sẵn sàng mới kết nối 
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-u", "root", "-p=rootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Cấu hình Ứng dụng Java Spring Boot 
+  app:
+    build:
+      context: ./hrm-system
+      dockerfile: Dockerfile
+    container_name: websitequanlynhansu-app-1
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=hrm_system
+      - DB_USERNAME=root
+      - DB_PASSWORD=rootpassword
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - hrm-network
+
+volumes:
+  mysql_data:
+
+networks:
+  hrm-network:
+    driver: bridge

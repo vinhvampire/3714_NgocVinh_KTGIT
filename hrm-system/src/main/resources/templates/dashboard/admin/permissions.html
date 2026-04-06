@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/dashboard-layout :: html(content=~{::page-content}, styles=~{dashboard/admin/admin-shared :: styles}, scripts=~{::custom-scripts})}"
+      lang="vi">
+<head>
+    <title>Admin — Phân quyền</title>
+</head>
+<body>
+
+<th:block th:fragment="page-content">
+
+    <div class="admin-banner">
+        <div class="ab-left">
+            <h2><i class="fa-solid fa-user-shield" style="margin-right:8px;opacity:.8"></i>Phân quyền</h2>
+            <p>Ma trận vai trò trong HRM — 4 role chuẩn (không có DEPT_HEAD)</p>
+            <div class="ab-date" id="dateTime">...</div>
+        </div>
+    </div>
+
+    <th:block th:replace="~{fragments/admin-subnav :: subnav}"></th:block>
+
+    <div class="card">
+        <div class="card-hd">
+            <div class="card-title">Mô tả vai trò &amp; luồng xử lý</div>
+            <a class="card-link" href="/dashboard/admin/accounts">Quản lý tài khoản</a>
+        </div>
+        <table class="perm-table">
+            <thead>
+            <tr>
+                <th>Role</th>
+                <th>Dashboard</th>
+                <th>Nghiệp vụ chính</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td><span class="role-badge role-director">DIRECTOR</span></td>
+                <td><code>/dashboard/director</code></td>
+                <td>Đọc báo cáo, KPI chiến lược — không thao tác nghiệp vụ HR hàng ngày.</td>
+            </tr>
+            <tr>
+                <td><span class="role-badge role-admin">ADMIN</span></td>
+                <td><code>/dashboard/admin</code></td>
+                <td>Quản trị tài khoản: tạo/khóa/xóa, đổi role, gán nhân viên, reset mật khẩu. Cùng quyền ghi tổ chức &amp; quyết định với HR (theo API).</td>
+            </tr>
+            <tr>
+                <td><span class="role-badge role-hr">HR</span></td>
+                <td><code>/dashboard/hr</code></td>
+                <td>Toàn bộ nghiệp vụ nhân sự: nhân viên, chấm công, phép, lương, tuyển dụng, tổ chức, quyết định.</td>
+            </tr>
+            <tr>
+                <td><span class="role-badge role-employee">EMPLOYEE</span></td>
+                <td><code>/dashboard/employee</code></td>
+                <td>Tự phục vụ: hồ sơ, chấm công (xem), đơn phép, phiếu lương.</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+        <div class="card-hd">
+            <div class="card-title">Ghi chú kỹ thuật</div>
+        </div>
+        <p style="font-size:13px;color:var(--txt2);line-height:1.6">
+            JWT trong cookie <code>jwt_token</code> + header <code>Authorization: Bearer</code>. API quản trị dùng
+            <code>@PreAuthorize("hasRole('ADMIN')")</code> tại <code>/api/dashboard/admin/**</code>.
+            Onboarding nhân viên qua <code>POST /api/employees/onboard</code> chỉ dành cho ADMIN.
+        </p>
+    </div>
+
+</th:block>
+
+<script th:fragment="custom-scripts">
+    (function () {
+        const d = new Date();
+        const days = ['Chủ nhật','Thứ hai','Thứ ba','Thứ tư','Thứ năm','Thứ sáu','Thứ bảy'];
+        const el = document.getElementById('dateTime');
+        if (el) el.textContent = days[d.getDay()] + ', ' + d.toLocaleDateString('vi-VN');
+    })();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<body>
+
+<th:block th:fragment="subnav">
+    <style>
+        .admin-subnav {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+        .admin-subnav a {
+            padding: 8px 12px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            text-decoration: none;
+            font-weight: 800;
+            font-size: 12px;
+            color: var(--txt2);
+            background: #fff;
+            transition: all .18s;
+        }
+        .admin-subnav a:hover {
+            border-color: #6366F1;
+            color: #6366F1;
+            background: #EEF2FF;
+        }
+        .admin-subnav a.active {
+            border-color: #6366F1;
+            color: #6366F1;
+            background: #EEF2FF;
+        }
+    </style>
+    <nav class="admin-subnav" aria-label="Admin sub-navigation">
+        <a href="/dashboard/admin"
+           th:classappend="${currentUri != null && currentUri == '/dashboard/admin' ? 'active' : ''}">Tổng quan</a>
+        <a href="/dashboard/admin/accounts"
+           th:classappend="${currentUri != null && #strings.contains(currentUri, '/dashboard/admin/accounts') ? 'active' : ''}">Tài khoản</a>
+        <a href="/dashboard/admin/permissions"
+           th:classappend="${currentUri != null && #strings.contains(currentUri, '/dashboard/admin/permissions') ? 'active' : ''}">Phân quyền</a>
+        <a href="/dashboard/admin/settings"
+           th:classappend="${currentUri != null && #strings.contains(currentUri, '/dashboard/admin/settings') ? 'active' : ''}">Cấu hình</a>
+    </nav>
+</th:block>
+</body>
+</html>

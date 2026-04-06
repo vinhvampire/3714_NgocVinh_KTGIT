@@ -1,0 +1,72 @@
+###  Test Hiring Request (Phòng ban gửi yêu cầu)
+POST http://localhost:8080/api/recruitment/hiring-request
+Content-Type: application/json
+
+{
+  "idYeuCau": "REQ_001",
+  "viTriCanTuyen": "Java Developer",
+  "soLuong": 5,
+  "trinhDoYeuCau": "Đại học",
+  "moTa": "Cần tuyển gấp cho dự án HRM"
+}
+
+###  Test Candidate API (Ứng viên nộp hồ sơ)
+POST http://localhost:8080/api/recruitment/apply
+Content-Type: application/json
+
+{
+  "hoTen": "Nguyen Van A",
+  "email": "vana@gmail.com",
+  "cvUrl": "http://drive.google.com/cv_cua_a.pdf"
+}
+
+### Phê duyệt ứng viên và chuyển thành nhân viên
+POST http://localhost:8080/api/recruitment/approve/1
+Content-Type: application/json
+
+###  Test Check-in (Vào làm)
+# Lưu ý: Thay "NV1711910000" bằng mã nhân viên ông vừa tạo ở bước Onboarding
+POST http://localhost:8080/api/attendance/check-in/NV1774986049
+Content-Type: application/json
+
+###  Test Check-out (Ra về)
+POST http://localhost:8080/api/attendance/check-out/NV1774986049
+Content-Type: application/json
+
+### Phê duyệt đơn nghỉ phép ID 1
+POST http://localhost:8080/api/attendance/approve-leave/1
+Content-Type: application/json
+
+
+### Nộp đơn nghỉ phép
+POST http://localhost:8080/api/attendance/leave-request
+Content-Type: application/json
+
+{
+  "nhanVien": { "id": "NV1774986049" },
+  "loaiNghi": "PH_NAM",
+  "tuNgay": "2026-04-20",
+  "denNgay": "2026-04-22",
+  "lyDo": "Giải quyết việc gia đình"
+}
+###  Xem báo cáo chấm công (Nếu ông đã viết API report)
+GET http://localhost:8080/api/attendance/report/NV1774986049
+Content-Type: application/json
+
+### Xem báo cáo chấm công cá nhân
+GET http://localhost:8080/api/attendance/report/NV1711910000
+Content-Type: application/json
+
+###  Lên lịch phỏng vấn
+POST http://localhost:8080/api/recruitment/schedule-interview
+Content-Type: application/json
+
+{
+  "thoiGian": "2026-04-10T09:00:00",
+  "dia_diem": "Phòng họp tầng 5 - Tòa nhà HRM",
+  "nguoiPhongVan": "Trưởng phòng Nhân sự",
+  "ghiChu": "Phỏng vấn trực tiếp, ứng viên mang theo laptop",
+  "ungVien": {
+    "id": 1
+  }
+}

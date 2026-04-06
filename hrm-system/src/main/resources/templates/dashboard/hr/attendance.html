@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/dashboard-layout :: html(content=~{::page-content}, styles=~{dashboard/hr :: custom-styles}, scripts=~{::custom-scripts})}"
+      lang="vi">
+<head>
+    <title>HR - Chấm công</title>
+</head>
+<body>
+
+<th:block th:fragment="page-content">
+
+    <div class="hr-banner">
+        <div class="hb-left">
+            <h2><i class="fa-solid fa-clock" style="margin-right:8px;opacity:.8"></i>Chấm công</h2>
+            <p>Thống kê chuyên cần và danh sách nhân sự đi muộn.</p>
+            <div class="hb-date" id="dateTime">...</div>
+        </div>
+    </div>
+
+    <th:block th:replace="~{fragments/hr-subnav :: subnav}"></th:block>
+
+    <div class="g2">
+        <div class="card">
+            <div class="card-hd">
+                <div class="card-title"><i class="fa-solid fa-chart-pie" style="color:var(--ok);margin-right:6px"></i>Tỉ lệ chuyên cần</div>
+            </div>
+
+            <div class="filter-row">
+                <label>Tháng:</label>
+                <select class="filter-select" id="donutFilter" onchange="loadDonutData()">
+                    <option value="">-- Chọn tháng --</option>
+                </select>
+            </div>
+
+            <div class="donut-wrap">
+                <canvas id="donutChart" style="max-width:200px;max-height:200px"></canvas>
+                <div class="donut-center">
+                    <div class="big" id="donutCenter">—</div>
+                    <div class="sm">có mặt</div>
+                </div>
+            </div>
+
+            <div class="donut-legend" id="donutLegend">
+                <div class="legend-item">
+                    <div class="legend-dot" style="background:var(--ok)"></div>
+                    <span style="color:var(--txt2)">Có mặt đúng giờ</span>
+                    <span class="legend-val" id="legendOnTime">—</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background:var(--warn)"></div>
+                    <span style="color:var(--txt2)">Đi muộn</span>
+                    <span class="legend-val" id="legendLate">—</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background:var(--inf)"></div>
+                    <span style="color:var(--txt2)">Nghỉ có phép</span>
+                    <span class="legend-val" id="legendPermitted">—</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background:var(--err)"></div>
+                    <span style="color:var(--txt2)">Vắng không phép</span>
+                    <span class="legend-val" id="legendAbsent">—</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-bottom:0">
+            <div class="card-hd">
+                <div class="card-title"><i class="fa-solid fa-ranking-star" style="color:var(--warn);margin-right:6px"></i>Top 5 đi muộn</div>
+                <div class="filter-row" style="margin-bottom:0">
+                    <label>Tháng:</label>
+                    <select class="filter-select" id="lateFilter" onchange="loadLateTable()">
+                        <option value="">-- Chọn tháng --</option>
+                    </select>
+                </div>
+            </div>
+
+            <table class="rank-table">
+                <thead>
+                <tr>
+                    <th style="width:40px">Rank</th>
+                    <th>Nhân viên</th>
+                    <th>Phòng ban</th>
+                    <th>Số lần muộn</th>
+                    <th>Tổng phút muộn</th>
+                    <th>Tiền phạt</th>
+                    <th>Mức độ</th>
+                </tr>
+                </thead>
+                <tbody id="lateTableBody">
+                <tr>
+                    <td colspan="7">
+                        <div class="empty-state">
+                            <i class="fa-solid fa-spinner fa-spin"></i>
+                            <p>Đang tải dữ liệu...</p>
+                        </div>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</th:block>
+
+<script th:fragment="custom-scripts">
+    function tick() {
+        const d = new Date();
+        const days = ['Chủ nhật','Thứ hai','Thứ ba','Thứ tư','Thứ năm','Thứ sáu','Thứ bảy'];
+        const str = days[d.getDay()] + ', ' +
+            String(d.getDate()).padStart(2,'0') + '/' +
+            String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear() +
+            ' — ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+        document.getElementById('dateTime').textContent = str;
+    }
+
+    async function apiFetch(url, options = {}) {
+        const defaultOptions = { headers: getAuthHeaders(), ...options };
+        const response = await fetch(url, defaultOptions);
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        return response;
+    }
+
+    async function apiFetchJson(url, options = {}) {
+        return (await apiFetch(url, options)).json();
+    }
+
+    /* ── 1. Donut Chart chuyên cần ── */
+    let donutChartInstance = null;
+
+    async function initDonutMonths() {
+        const sel = document.getElementById('donutFilter');
+        const now = new Date();
+        sel.innerHTML = `<option value="">-- Chọn tháng --</option>`;
+        for (let i = 0; i < 4; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+            const lbl = `Tháng ${d.getMonth()+1}/${d.getFullYear()}`;
+            sel.appendChild(new Option(lbl, val));
+        }
+        sel.selectedIndex = 1; // chọn tháng hiện tại (với danh sách có 4 tháng gần nhất)
+        loadDonutData();
+    }
+
+    async function loadDonutData() {
+        const month = document.getElementById('donutFilter').value;
+        if (!month) return;
+        try {
+            const data = await apiFetchJson(`/api/dashboard/hr/attendance/summary?month=${month}`);
+            renderDonut(data);
+        } catch(e) {
+            console.error('loadDonutData error:', e);
+            document.getElementById('donutLegend').innerHTML =
+                `<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i><p>Không thể tải dữ liệu</p></div>`;
+        }
+    }
+
+    function renderDonut(data) {
+        const ctx = document.getElementById('donutChart').getContext('2d');
+        const vals = [data.presentPct, data.latePct, data.permittedPct, data.absentPct];
+        const total = (data.presentPct ?? 0) + (data.latePct ?? 0);
+        document.getElementById('donutCenter').textContent = total + '%';
+
+        document.getElementById('legendOnTime').textContent    = (data.presentPct   ?? '—') + '%';
+        document.getElementById('legendLate').textContent      = (data.latePct      ?? '—') + '%';
+        document.getElementById('legendPermitted').textContent = (data.permittedPct ?? '—') + '%';
+        document.getElementById('legendAbsent').textContent    = (data.absentPct    ?? '—') + '%';
+
+        if (donutChartInstance) donutChartInstance.destroy();
+        donutChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Có mặt đúng giờ','Đi muộn','Nghỉ có phép','Vắng không phép'],
+                datasets: [{
+                    data: vals,
+                    backgroundColor: ['#10B981','#F59E0B','#3B82F6','#EF4444'],
+                    borderWidth: 0, hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                cutout: '70%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw}%` } }
+                }
+            }
+        });
+    }
+
+    /* ── 2. Top 5 đi muộn ── */
+    async function initLateMonths() {
+        const sel = document.getElementById('lateFilter');
+        const now = new Date();
+        sel.innerHTML = `<option value="">-- Chọn tháng --</option>`;
+        for (let i = 0; i < 4; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+            const lbl = `Tháng ${d.getMonth()+1}/${d.getFullYear()}`;
+            sel.appendChild(new Option(lbl, val));
+        }
+        sel.selectedIndex = 1;
+        loadLateTable();
+    }
+
+    async function loadLateTable() {
+        const month = document.getElementById('lateFilter').value;
+        if (!month) return;
+
+        const tbody = document.getElementById('lateTableBody');
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>Đang tải...</p></div></td></tr>`;
+
+        try {
+            const data = await apiFetchJson(`/api/dashboard/hr/attendance/top-late?month=${month}&limit=5`);
+            renderLateTable(data);
+        } catch(e) {
+            console.error('loadLateTable error:', e);
+            tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-triangle-exclamation" style="color:var(--err);opacity:.5"></i><p>Lỗi tải dữ liệu</p></div></td></tr>`;
+        }
+    }
+
+    function renderLateTable(list) {
+        const rankClass = ['rank-1','rank-2','rank-3','rank-n','rank-n'];
+        const tbody = document.getElementById('lateTableBody');
+
+        if (!list || list.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-circle-check" style="color:var(--ok);opacity:.5"></i><p>Không có NV đi muộn tháng này</p></div></td></tr>`;
+            return;
+        }
+
+        const maxLate = list[0]?.soLanMuon || 1;
+        tbody.innerHTML = list.map((nv, i) => {
+            const initials = (nv.tenNV || '??').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+            const colors = ['var(--err-s)/var(--err)','var(--warn-s)/var(--warn)','var(--inf-s)/var(--inf)','var(--teal-s)/var(--teal)','var(--hr-s)/var(--hr)'];
+            const [bg, clr] = (colors[i] || 'var(--bg)/var(--txt2)').split('/');
+
+            const pct = Math.round((nv.soLanMuon / maxLate) * 100);
+            const fmtMoney = (n) => n ? n.toLocaleString('vi-VN') + 'đ' : '—';
+
+            return `
+            <tr>
+                <td><div class="rank-num ${rankClass[i]}">${i+1}</div></td>
+                <td><div class="emp-cell">
+                    <div class="emp-av" style="background:${bg};color:${clr}">${initials}</div>
+                    <div><div class="emp-name">${nv.tenNV}</div><div class="emp-dept">${nv.chucVu || ''}</div></div>
+                </div></td>
+                <td><span class="dept-tag">${nv.tenPhong || '—'}</span></td>
+                <td><strong style="color:${i===0?'var(--err)':'var(--warn)'}">${nv.soLanMuon}</strong> lần</td>
+                <td>${nv.tongPhutMuon ?? '—'} phút</td>
+                <td style="color:var(--err);font-weight:700">${fmtMoney(nv.tienPhat)}</td>
+                <td><div class="late-bar-wrap"><div class="late-bar" style="width:${pct}%"></div></div></td>
+            </tr>
+            `;
+        }).join('');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        tick();
+        initDonutMonths();
+        initLateMonths();
+    });
+</script>
+
+</body>
+</html>
+

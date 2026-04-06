@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+
+<th:block th:fragment="nav-items">
+
+    <!-- DIRECTOR -->
+    <th:block th:if="${role == 'DIRECTOR'}">
+        <div class="nav-section">Dashboard</div>
+        <a class="nav-item" href="/dashboard/director"
+           th:classappend="${currentUri == '/dashboard/director' ? 'active' : ''}">
+            <i class="fas fa-tachometer-alt"></i>
+            <span>Dashboard</span>
+        </a>
+
+        <div class="nav-section">Báo Cáo</div>
+        <a class="nav-item" href="/dashboard/director/reports"
+           th:classappend="${#strings.contains(currentUri, '/reports') ? 'active' : ''}">
+            <i class="fas fa-chart-bar"></i>
+            <span>Báo Cáo</span>
+        </a>
+
+        <a class="nav-item" href="/dashboard/director/kpi"
+           th:classappend="${#strings.contains(currentUri, '/kpi') ? 'active' : ''}">
+            <i class="fas fa-chart-line"></i>
+            <span>KPI Kinh Doanh</span>
+        </a>
+    </th:block>
+
+    <!-- ADMIN -->
+    <th:block th:if="${role == 'ADMIN'}">
+        <div class="nav-section">Quản Trị</div>
+        <a class="nav-item" href="/dashboard/admin"
+           th:classappend="${currentUri == '/dashboard/admin' ? 'active' : ''}">
+            <i class="fas fa-tachometer-alt"></i>
+            <span>Dashboard</span>
+        </a>
+
+        <a class="nav-item" href="/dashboard/admin/accounts"
+           th:classappend="${#strings.contains(currentUri, '/accounts') ? 'active' : ''}">
+            <i class="fas fa-users"></i>
+            <span>Quản Lý Tài Khoản</span>
+        </a>
+
+        <a class="nav-item" href="/dashboard/admin/permissions"
+           th:classappend="${#strings.contains(currentUri, '/permissions') ? 'active' : ''}">
+            <i class="fas fa-lock"></i>
+            <span>Phân Quyền</span>
+        </a>
+
+        <a class="nav-item" href="/dashboard/admin/settings"
+           th:classappend="${#strings.contains(currentUri, '/settings') ? 'active' : ''}">
+            <i class="fas fa-cog"></i>
+            <span>Cấu Hình Hệ Thống</span>
+        </a>
+    </th:block>
+
+    <!-- HR -->
+    <th:block th:if="${role == 'HR'}">
+        <div class="nav-section">Tổng Quan</div>
+        <a class="nav-item" href="/dashboard/hr"
+           th:classappend="${currentUri == '/dashboard/hr' ? 'active' : ''}">
+            <i class="fas fa-tachometer-alt"></i>
+            <span>Dashboard</span>
+        </a>
+
+        <div class="nav-section">Nhân Sự</div>
+        <a class="nav-item" href="/dashboard/hr/employees"
+           th:classappend="${#strings.contains(currentUri, '/employees') ? 'active' : ''}">
+            <i class="fas fa-users"></i>
+            <span>Quản Lý Nhân Viên</span>
+        </a>
+
+        <a class="nav-item" href="/dashboard/hr/organization"
+           th:classappend="${#strings.contains(currentUri, '/organization') ? 'active' : ''}">
+            <i class="fas fa-sitemap"></i>
+            <span>Tổ Chức</span>
+        </a>
+
+        <div class="nav-section">Tính Công & Lương</div>
+        <a class="nav-item" href="/dashboard/hr/attendance"
+           th:classappend="${#strings.contains(currentUri, '/attendance') ? 'active' : ''}">
+            <i class="fas fa-clock"></i>
+            <span>Chấm Công</span>
+        </a>
+
+        <a class="nav-item" href="/dashboard/hr/leaves"
+           th:classappend="${#strings.contains(currentUri, '/leaves') ? 'active' : ''}">
+            <i class="fas fa-calendar-alt"></i>
+            <span>Đơn Phép</span>
+        </a>
+
+        <a class="nav-item" href="/dashboard/hr/payroll"
+           th:classappend="${#strings.contains(currentUri, '/payroll') ? 'active' : ''}">
+            <i class="fas fa-money-bill-wave"></i>
+            <span>Lương</span>
+        </a>
+
+        <div class="nav-section">Tuyển Dụng</div>
+        <a class="nav-item" href="/dashboard/hr/recruitment"
+           th:classappend="${#strings.contains(currentUri, '/recruitment') ? 'active' : ''}">
+            <i class="fas fa-handshake"></i>
+            <span>Tuyển Dụng</span>
+        </a>
+    </th:block>
+
+    <!-- EMPLOYEE -->
+    <th:block th:if="${role == 'EMPLOYEE'}">
+        <div class="nav-section">Tổng Quan</div>
+        <a class="nav-item" href="/dashboard/employee"
+           th:classappend="${currentUri == '/dashboard/employee' ? 'active' : ''}">
+            <i class="fas fa-tachometer-alt"></i>
+            <span>Dashboard</span>
+        </a>
+
+        <div class="nav-section">Cá Nhân</div>
+        <a class="nav-item" href="/dashboard/employee/profile"
+           th:classappend="${#strings.contains(currentUri, '/profile') ? 'active' : ''}">
+            <i class="fas fa-user"></i>
+            <span>Hồ Sơ Cá Nhân</span>
+        </a>
+
+        <div class="nav-section">Tính Công & Lương</div>
+        <a class="nav-item" href="/dashboard/employee/attendance"
+           th:classappend="${#strings.contains(currentUri, '/attendance') ? 'active' : ''}">
+            <i class="fas fa-clock"></i>
+            <span>Chấm Công Của Tôi</span>
+        </a>
+
+        <a class="nav-item" href="/dashboard/employee/leaves"
+           th:classappend="${#strings.contains(currentUri, '/leaves') ? 'active' : ''}">
+            <i class="fas fa-calendar-alt"></i>
+            <span>Đơn Phép</span>
+        </a>
+
+        <a class="nav-item" href="/dashboard/employee/payslip"
+           th:classappend="${#strings.contains(currentUri, '/payslip') ? 'active' : ''}">
+            <i class="fas fa-file-invoice-dollar"></i>
+            <span>Lương Của Tôi</span>
+        </a>
+    </th:block>
+
+</th:block>
+
+</html>

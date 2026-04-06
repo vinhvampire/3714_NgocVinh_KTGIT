@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/dashboard-layout :: html(content=~{::page-content}, styles=~{dashboard/admin/admin-shared :: styles}, scripts=~{::custom-scripts})}"
+      lang="vi">
+<head>
+    <title>Admin — Tài khoản</title>
+</head>
+<body>
+
+<th:block th:fragment="page-content">
+
+    <div class="admin-banner">
+        <div class="ab-left">
+            <h2><i class="fa-solid fa-users-gear" style="margin-right:8px;opacity:.8"></i>Quản lý tài khoản</h2>
+            <p>Tạo, khóa/mở, đổi role, gán nhân viên, đặt lại mật khẩu</p>
+            <div class="ab-date" id="dateTime">...</div>
+        </div>
+    </div>
+
+    <th:block th:replace="~{fragments/admin-subnav :: subnav}"></th:block>
+
+    <div class="card" style="margin-bottom:24px">
+        <div class="card-hd">
+            <div class="card-title"><i class="fa-solid fa-table-list" style="color:var(--adm);margin-right:6px"></i>Danh sách</div>
+            <button type="button" class="btn-add" onclick="openAddModal()"><i class="fa-solid fa-plus"></i> Tạo tài khoản</button>
+        </div>
+        <div class="search-bar">
+            <input class="search-input" type="text" id="searchInput" placeholder="Tìm theo username..." oninput="debounceReload()"/>
+            <select class="filter-select" id="roleFilter" onchange="reloadAccounts()">
+                <option value="">Tất cả role</option>
+                <option value="DIRECTOR">DIRECTOR</option>
+                <option value="ADMIN">ADMIN</option>
+                <option value="HR">HR</option>
+                <option value="EMPLOYEE">EMPLOYEE</option>
+            </select>
+            <select class="filter-select" id="statusFilter" onchange="reloadAccounts()">
+                <option value="">Tất cả trạng thái</option>
+                <option value="active">Hoạt động</option>
+                <option value="locked">Bị khóa</option>
+            </select>
+        </div>
+        <table class="acc-table">
+            <thead>
+            <tr>
+                <th>Tài khoản</th>
+                <th>Role</th>
+                <th>Nhân viên</th>
+                <th>Trạng thái</th>
+                <th>Ngày tạo</th>
+                <th>Thao tác</th>
+            </tr>
+            </thead>
+            <tbody id="accountTableBody">
+            <tr><td colspan="6"><div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>Đang tải...</p></div></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="g2">
+        <div class="card">
+            <div class="card-hd">
+                <div class="card-title"><i class="fa-solid fa-clock-rotate-left" style="color:var(--inf);margin-right:6px"></i>Log đăng nhập</div>
+            </div>
+            <div class="log-list" id="loginLogList">
+                <div class="empty-state"><p style="padding:20px">Chưa có log audit (endpoint dự phòng). Có thể bổ sung bảng lịch sử đăng nhập sau.</p></div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-hd">
+                <div class="card-title">
+                    <i class="fa-solid fa-link-slash" style="color:var(--warn);margin-right:6px"></i>TK chưa gán NV
+                    <span id="unassignedBadge" style="background:var(--warn);color:#fff;font-size:10px;padding:1px 7px;border-radius:20px;margin-left:5px">—</span>
+                </div>
+            </div>
+            <div class="unassigned-list" id="unassignedList"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="addModal">
+        <div class="modal-box">
+            <div class="modal-title"><i class="fa-solid fa-user-plus" style="color:var(--adm);margin-right:8px"></i>Tạo tài khoản mới</div>
+            <div class="form-row">
+                <label class="form-label">Username <span style="color:var(--err)">*</span></label>
+                <input class="form-input" type="text" id="newUsername" autocomplete="off"/>
+            </div>
+            <div class="form-row">
+                <label class="form-label">Mật khẩu <span style="color:var(--err)">*</span></label>
+                <input class="form-input" type="password" id="newPassword" autocomplete="new-password"/>
+            </div>
+            <div class="form-row">
+                <label class="form-label">Role <span style="color:var(--err)">*</span></label>
+                <select class="form-select" id="newRole">
+                    <option value="">-- Chọn --</option>
+                    <option value="DIRECTOR">DIRECTOR</option>
+                    <option value="ADMIN">ADMIN</option>
+                    <option value="HR">HR</option>
+                    <option value="EMPLOYEE">EMPLOYEE</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <label class="form-label">
+                    Gán nhân viên
+                    <span id="assignEmployeeRequiredStar" style="color:var(--err);font-weight:500">*</span>
+                </label>
+                <select class="form-select" id="assignEmployee"><option value="">-- Chọn nhân viên --</option></select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeAddModal()">Hủy</button>
+                <button type="button" class="btn-submit" onclick="submitAdd()"><i class="fa-solid fa-plus"></i> Tạo</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="roleModal">
+        <div class="modal-box" style="width:360px">
+            <div class="modal-title"><i class="fa-solid fa-user-shield" style="color:var(--inf);margin-right:8px"></i>Đổi role</div>
+            <div style="font-size:13px;color:var(--txt2);margin-bottom:14px">Tài khoản: <strong id="roleModalUser"></strong></div>
+            <div class="form-row">
+                <label class="form-label">Role mới <span style="color:var(--err)">*</span></label>
+                <select class="form-select" id="newRoleSelect">
+                    <option value="DIRECTOR">DIRECTOR</option>
+                    <option value="ADMIN">ADMIN</option>
+                    <option value="HR">HR</option>
+                    <option value="EMPLOYEE">EMPLOYEE</option>
+                </select>
+            </div>
+
+            <div class="form-row">
+                <label class="form-label">Nhân viên quản lý</label>
+                <select class="form-select" id="managedEmployeesSelect" size="6" multiple></select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeRoleModal()">Hủy</button>
+                <button type="button" class="btn-submit" onclick="confirmRole()"><i class="fa-solid fa-check"></i> Lưu</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="assignModal">
+        <div class="modal-box" style="width:400px">
+            <div class="modal-title"><i class="fa-solid fa-link" style="color:var(--teal);margin-right:8px"></i>Gán nhân viên</div>
+            <div style="font-size:13px;color:var(--txt2);margin-bottom:14px">TK: <strong id="assignModalUser"></strong></div>
+            <div class="form-row">
+                <label class="form-label">Nhân viên</label>
+                <select class="form-select" id="assignModalSelect"><option value="">— Bỏ gán —</option></select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeAssignModal()">Hủy</button>
+                <button type="button" class="btn-submit" onclick="confirmAssign()">Lưu</button>
+            </div>
+        </div>
+    </div>
+
+</th:block>
+
+<script th:fragment="custom-scripts">
+    let roleTargetId = '';
+    let roleTargetNhanVienId = '';
+    let assignTargetId = '';
+    let _debounce;
+
+    function tick() {
+        const d = new Date();
+        const days = ['Chủ nhật','Thứ hai','Thứ ba','Thứ tư','Thứ năm','Thứ sáu','Thứ bảy'];
+        document.getElementById('dateTime').textContent =
+            days[d.getDay()] + ', ' + String(d.getDate()).padStart(2,'0') + '/' +
+            String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
+    }
+    tick();
+    setInterval(tick, 60000);
+
+    function debounceReload() {
+        clearTimeout(_debounce);
+        _debounce = setTimeout(reloadAccounts, 350);
+    }
+
+    async function apiJson(url, options = {}) {
+        const res = await fetch(url, { ...options, headers: getAuthHeaders() });
+        let errText = res.statusText;
+        try {
+            const j = await res.clone().json();
+            if (j.message) errText = j.message;
+        } catch (_) {}
+        if (!res.ok) throw new Error(errText || 'HTTP ' + res.status);
+        if (res.status === 204) return null;
+        const ct = res.headers.get('content-type');
+        if (ct && ct.includes('application/json')) return res.json();
+        return null;
+    }
+
+    function esc(s) {
+        if (s == null) return '';
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+    }
+
+    function roleClass(role) {
+        const r = (role || '').toUpperCase();
+        if (r === 'DIRECTOR') return 'role-director';
+        if (r === 'HR') return 'role-hr';
+        if (r === 'ADMIN') return 'role-admin';
+        return 'role-employee';
+    }
+
+    function fmtDate(iso) {
+        if (!iso) return '—';
+        if (Array.isArray(iso) && iso.length >= 3) {
+            return String(iso[2]).padStart(2,'0') + '/' + String(iso[1]).padStart(2,'0') + '/' + iso[0];
+        }
+        try {
+            const d = new Date(iso);
+            if (isNaN(d.getTime())) return '—';
+            return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
+        } catch (_) { return '—'; }
+    }
+
+    function buildQuery() {
+        const p = new URLSearchParams();
+        const q = document.getElementById('searchInput').value.trim();
+        if (q) p.set('q', q);
+        const role = document.getElementById('roleFilter').value;
+        if (role) p.set('role', role);
+        const st = document.getElementById('statusFilter').value;
+        if (st === 'active') p.set('active', 'true');
+        if (st === 'locked') p.set('active', 'false');
+        const qs = p.toString();
+        return qs ? ('?' + qs) : '';
+    }
+
+    async function reloadAccounts() {
+        const tbody = document.getElementById('accountTableBody');
+        try {
+            const list = await apiJson('/api/dashboard/admin/accounts' + buildQuery());
+            if (!list || !list.length) {
+                tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><i class="fa-solid fa-users-slash" style="opacity:.3"></i><p>Không có bản ghi</p></div></td></tr>';
+                return;
+            }
+            tbody.innerHTML = list.map(t => {
+                const on = t.trangThaiTaiKhoan;
+                const stClass = on ? 'status-on' : 'status-off';
+                const stHtml = on ? '<i class="fa-solid fa-circle" style="font-size:7px"></i> Hoạt động' : '<i class="fa-solid fa-circle" style="font-size:7px"></i> Bị khóa';
+                const nv = t.hoTenNhanVien ? esc(t.nhanVienId) + ' — ' + esc(t.hoTenNhanVien) : '—';
+                const ma = esc(t.maTaiKhoan);
+                return `<tr>
+                    <td><strong>${esc(t.username)}</strong><div style="font-size:11px;color:var(--txt2)">${ma}</div></td>
+                    <td><span class="role-badge ${roleClass(t.role)}">${esc(t.role) || '—'}</span></td>
+                    <td>${nv}</td>
+                    <td><button type="button" class="status-toggle ${stClass}" onclick="doToggle('${ma.replace(/'/g, "\\'")}')">${stHtml}</button></td>
+                    <td>${fmtDate(t.ngayTao)}</td>
+                    <td style="white-space:nowrap">
+                        <button type="button" class="action-btn btn-assign" title="Gán NV" onclick="openAssignModal('${ma.replace(/'/g, "\\'")}')"><i class="fa-solid fa-link"></i></button>
+                        <button type="button" class="action-btn btn-role" title="Đổi role"
+                                onclick="openRoleModal('${ma.replace(/'/g, "\\'")}','${String(t.role || 'EMPLOYEE').replace(/'/g, "\\'")}','${String(t.nhanVienId || '').replace(/'/g, "\\'")}','${String(t.directManagerId || '').replace(/'/g, "\\'")}')">
+                            <i class="fa-solid fa-user-shield"></i>
+                        </button>
+                        <button type="button" class="action-btn btn-reset" title="Reset MK" onclick="doReset('${ma.replace(/'/g, "\\'")}')"><i class="fa-solid fa-key"></i></button>
+                        <button type="button" class="action-btn btn-delete" title="Xóa" onclick="doDelete('${ma.replace(/'/g, "\\'")}')"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>`;
+            }).join('');
+        } catch (e) {
+            tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state" style="color:var(--err)"><p>' + (e.message || 'Lỗi') + '</p></div></td></tr>';
+        }
+    }
+
+    async function loadStatsBadge() {
+        try {
+            const data = await apiJson('/api/dashboard/admin/stats');
+            document.getElementById('unassignedBadge').textContent = data.unassignedAccounts ?? '0';
+        } catch (_) {
+            document.getElementById('unassignedBadge').textContent = '—';
+        }
+    }
+
+    async function loadUnassignedList() {
+        const el = document.getElementById('unassignedList');
+        try {
+            const list = await apiJson('/api/dashboard/admin/accounts/unassigned');
+            if (!list.length) {
+                el.innerHTML = '<div class="empty-state"><i class="fa-solid fa-circle-check" style="opacity:.35"></i><p>Không có tài khoản chưa gán</p></div>';
+                return;
+            }
+            el.innerHTML = list.map(t => {
+                const ma = esc(t.maTaiKhoan).replace(/'/g, "\\'");
+                return `<div class="unassigned-item">
+                    <div class="ua-av">${esc((t.username||'?')[0]).toUpperCase()}</div>
+                    <div><div class="ua-name">${esc(t.username)}</div><div class="ua-role">${esc(t.role||'')}</div></div>
+                    <button type="button" class="btn-assign-small" onclick="openAssignModal('${ma}')">Gán NV</button>
+                </div>`;
+            }).join('');
+        } catch (e) {
+            el.innerHTML = '<div class="empty-state"><p>Lỗi tải</p></div>';
+        }
+    }
+
+    async function fillEmployeeSelect(sel, mode = 'assign') {
+        const list = await apiJson('/api/dashboard/admin/employees/unassigned');
+        const emptyLabel = mode === 'create' ? '— Chọn nhân viên —' : '— Bỏ gán —';
+        const opts = [`<option value="">${emptyLabel}</option>`];
+        (list || []).forEach(n => {
+            opts.push(`<option value="${n.id}">${n.id} — ${n.hoTen || ''}</option>`);
+        });
+        sel.innerHTML = opts.join('');
+    }
+
+    async function openAddModal() {
+        document.getElementById('newUsername').value = '';
+        document.getElementById('newPassword').value = '';
+        document.getElementById('newRole').value = '';
+        const emp = document.getElementById('assignEmployee');
+        await fillEmployeeSelect(emp, 'create');
+        syncAssignRequiredStar();
+        document.getElementById('addModal').classList.add('show');
+    }
+    function closeAddModal() { document.getElementById('addModal').classList.remove('show'); }
+
+    async function submitAdd() {
+        const u = document.getElementById('newUsername').value.trim();
+        const p = document.getElementById('newPassword').value;
+        const r = document.getElementById('newRole').value;
+        const nvid = document.getElementById('assignEmployee').value;
+        if (!u || !p || !r) { toast('Nhập đủ username, mật khẩu, role', 'warning'); return; }
+        // Role != ADMIN bắt buộc phải gán nhân viên
+        if (r.toUpperCase() !== 'ADMIN' && (!nvid || nvid === '')) {
+            toast('Vui lòng chọn nhân viên để tạo tài khoản cho role ' + r, 'warning');
+            return;
+        }
+        try {
+            await apiJson('/api/dashboard/admin/accounts', {
+                method: 'POST',
+                body: JSON.stringify({ username: u, password: p, role: r, nhanVienId: nvid || null })
+            });
+            toast('Đã tạo tài khoản', 'success');
+            closeAddModal();
+            await reloadAccounts();
+            await loadUnassignedList();
+            await loadStatsBadge();
+        } catch (e) { toast(e.message || 'Lỗi', 'error'); }
+    }
+
+    async function doToggle(maTaiKhoan) {
+        try {
+            await apiJson('/api/dashboard/admin/accounts/' + encodeURIComponent(maTaiKhoan) + '/toggle-status', { method: 'PUT', body: '{}' });
+            toast('Đã cập nhật trạng thái', 'success');
+            await reloadAccounts();
+            await loadStatsBadge();
+        } catch (e) { toast(e.message || 'Lỗi', 'error'); }
+    }
+
+    async function doReset(maTaiKhoan) {
+        if (!confirm('Đặt mật khẩu mới ngẫu nhiên cho tài khoản này?')) return;
+        try {
+            const r = await fetch('/api/dashboard/admin/accounts/' + encodeURIComponent(maTaiKhoan) + '/reset-password', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: '{}'
+            });
+            const j = await r.json();
+            if (!r.ok) throw new Error(j.message || r.statusText);
+            toast('Mật khẩu mới: ' + (j.temporaryPassword || '—'), 'info', 8000);
+        } catch (e) { toast(e.message || 'Lỗi', 'error'); }
+    }
+
+    async function doDelete(maTaiKhoan) {
+        if (!confirm('Xóa tài khoản ' + maTaiKhoan + '?')) return;
+        try {
+            await apiJson('/api/dashboard/admin/accounts/' + encodeURIComponent(maTaiKhoan), { method: 'DELETE' });
+            toast('Đã xóa', 'success');
+            await reloadAccounts();
+            await loadUnassignedList();
+            await loadStatsBadge();
+        } catch (e) { toast(e.message || 'Lỗi', 'error'); }
+    }
+
+    async function openRoleModal(id, currentRole, nhanVienId, directManagerId) {
+        roleTargetId = id;
+        roleTargetNhanVienId = nhanVienId || '';
+        document.getElementById('roleModalUser').textContent = id;
+        document.getElementById('newRoleSelect').value = (currentRole || 'EMPLOYEE').toUpperCase();
+        // Nạp danh sách nhân viên mà tài khoản này sẽ quản lý
+        const selManaged = document.getElementById('managedEmployeesSelect');
+        if (!selManaged) return;
+        selManaged.innerHTML = '';
+        if (roleTargetNhanVienId) {
+            await fillManagedEmployeesSelect(selManaged, roleTargetNhanVienId);
+        } else {
+            selManaged.innerHTML = `<option value="" disabled>— Tài khoản chưa gán nhân viên —</option>`;
+        }
+
+        document.getElementById('roleModal').classList.add('show');
+    }
+    function closeRoleModal() { document.getElementById('roleModal').classList.remove('show'); }
+    async function confirmRole() {
+        const newRole = document.getElementById('newRoleSelect').value;
+        const selManaged = document.getElementById('managedEmployeesSelect');
+        const employeeIds = selManaged
+            ? Array.from(selManaged.selectedOptions).map(o => o.value).filter(v => v && v !== 'null')
+            : [];
+        try {
+            await apiJson('/api/dashboard/admin/accounts/' + encodeURIComponent(roleTargetId) + '/role', {
+                method: 'PUT',
+                body: JSON.stringify({
+                    role: newRole
+                })
+            });
+
+            // Cập nhật danh sách nhân viên do người quản lý này quản lý
+            await apiJson('/api/dashboard/admin/accounts/' + encodeURIComponent(roleTargetId) + '/manage-subordinates', {
+                method: 'PUT',
+                body: JSON.stringify({ employeeIds })
+            });
+
+            toast('Đã đổi role', 'success');
+            closeRoleModal();
+            await reloadAccounts();
+        } catch (e) { toast(e.message || 'Lỗi', 'error'); }
+    }
+
+    async function fillManagedEmployeesSelect(sel, managerNhanVienId) {
+        const candidates = await apiJson('/api/dashboard/admin/employees/subordinate-candidates?managerId=' + encodeURIComponent(managerNhanVienId));
+        const subs = await apiJson('/api/dashboard/admin/employees/subordinates?managerId=' + encodeURIComponent(managerNhanVienId));
+
+        const selectedSet = new Set((subs || []).map(x => String(x.id)));
+        sel.innerHTML = '';
+
+        (candidates || []).forEach(n => {
+            const id = String(n.id);
+            if (!id) return;
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.textContent = id + (n.hoTen ? ' — ' + n.hoTen : '');
+            if (selectedSet.has(id)) opt.selected = true;
+            sel.appendChild(opt);
+        });
+    }
+
+    async function openAssignModal(maTaiKhoan) {
+        assignTargetId = maTaiKhoan;
+        document.getElementById('assignModalUser').textContent = maTaiKhoan;
+        const sel = document.getElementById('assignModalSelect');
+        await fillEmployeeSelect(sel, 'assign');
+        document.getElementById('assignModal').classList.add('show');
+    }
+    function closeAssignModal() { document.getElementById('assignModal').classList.remove('show'); }
+    async function confirmAssign() {
+        const nvid = document.getElementById('assignModalSelect').value;
+        try {
+            await apiJson('/api/dashboard/admin/accounts/' + encodeURIComponent(assignTargetId) + '/assign', {
+                method: 'PUT',
+                body: JSON.stringify({ nhanVienId: nvid || null })
+            });
+            toast('Đã cập nhật gán nhân viên', 'success');
+            closeAssignModal();
+            await reloadAccounts();
+            await loadUnassignedList();
+            await loadStatsBadge();
+        } catch (e) { toast(e.message || 'Lỗi', 'error'); }
+    }
+
+    ['addModal','roleModal','assignModal'].forEach(id => {
+        document.getElementById(id).addEventListener('click', function(e) {
+            if (e.target === this) this.classList.remove('show');
+        });
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        reloadAccounts();
+        loadUnassignedList();
+        loadStatsBadge();
+        syncAssignRequiredStar();
+
+        const roleSel = document.getElementById('newRole');
+        if (roleSel) {
+            roleSel.addEventListener('change', syncAssignRequiredStar);
+        }
+    });
+
+    function syncAssignRequiredStar() {
+        const star = document.getElementById('assignEmployeeRequiredStar');
+        const role = (document.getElementById('newRole')?.value || '').toUpperCase();
+        if (!star) return;
+        // Role ADMIN: cho phép không gán
+        star.style.display = role === 'ADMIN' ? 'none' : 'inline';
+    }
+</script>
+
+</body>
+</html>

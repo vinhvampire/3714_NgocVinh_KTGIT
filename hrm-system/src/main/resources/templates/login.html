@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Đăng nhập — HRM System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #F4F6F9;
+            font-family: 'Nunito', sans-serif;
+        }
+        .login-wrapper {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-card {
+            width: 100%;
+            max-width: 420px;
+            border: none;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.10);
+        }
+        .login-header {
+            background: #FF6B35;
+            border-radius: 16px 16px 0 0;
+            padding: 28px 24px 22px;
+            text-align: center;
+        }
+        .login-header h3 {
+            color: #fff;
+            font-weight: 800;
+            font-size: 22px;
+            margin: 0;
+            letter-spacing: -0.3px;
+        }
+        .login-header p {
+            color: rgba(255,255,255,0.8);
+            font-size: 13px;
+            margin: 6px 0 0;
+        }
+        .login-body {
+            padding: 28px 28px 24px;
+        }
+        .form-label {
+            font-size: 13px;
+            font-weight: 700;
+            color: #374151;
+            margin-bottom: 6px;
+        }
+        .form-control {
+            border-radius: 8px;
+            border: 1.5px solid #E5E7EB;
+            font-size: 14px;
+            padding: 10px 14px;
+            transition: border-color 0.15s;
+        }
+        .form-control:focus {
+            border-color: #FF6B35;
+            box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.12);
+        }
+        .btn-login {
+            background: #FF6B35;
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 700;
+            padding: 11px;
+            width: 100%;
+            transition: background 0.15s;
+            cursor: pointer;
+        }
+        .btn-login:hover:not(:disabled) {
+            background: #e55a25;
+        }
+        .btn-login:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        .btn-login .spinner {
+            display: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.4);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            margin-right: 8px;
+        }
+        .btn-login.loading .spinner { display: inline-block; }
+        .btn-login.loading .btn-text { display: none; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        #errorMessage {
+            display: none;
+            font-size: 13px;
+            border-radius: 8px;
+        }
+        .forgot-link {
+            color: #FF6B35;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .forgot-link:hover { text-decoration: underline; color: #e55a25; }
+    </style>
+</head>
+<body>
+
+<div class="login-wrapper">
+    <div class="login-card card">
+
+        <!-- Header -->
+        <div class="login-header">
+            <h3>🏢 HRM System</h3>
+            <p>Hệ thống Quản lý Nhân sự — Group 117</p>
+        </div>
+
+        <!-- Body -->
+        <div class="login-body">
+
+            <!-- Thông báo lỗi JS -->
+            <div id="errorMessage" class="alert alert-danger mb-3"></div>
+
+            <!-- Thông báo từ URL param (VD: ?error=unauthorized) -->
+            <div th:if="${param.error != null}" class="alert alert-warning mb-3" style="font-size:13px">
+                ⚠️ Phiên làm việc hết hạn. Vui lòng đăng nhập lại.
+            </div>
+
+            <form id="loginForm" novalidate>
+
+                <div class="mb-3">
+                    <label class="form-label" for="username">Tên đăng nhập</label>
+                    <input type="text"
+                           id="username"
+                           class="form-control"
+                           placeholder="Nhập tên đăng nhập"
+                           autocomplete="username"
+                           required>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label" for="password">Mật khẩu</label>
+                    <input type="password"
+                           id="password"
+                           class="form-control"
+                           placeholder="Nhập mật khẩu"
+                           autocomplete="current-password"
+                           required>
+                </div>
+
+                <button type="submit" class="btn-login" id="btnLogin">
+                    <span class="spinner"></span>
+                    <span class="btn-text">Đăng nhập</span>
+                </button>
+
+            </form>
+
+            <div class="mt-3 text-center">
+                <a href="/forgot-password" class="forgot-link">Quên mật khẩu?</a>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    // ── Điều hướng theo role sau khi đăng nhập thành công ──
+    // Thứ tự cấp bậc: DIRECTOR > ADMIN > HR > EMPLOYEE
+    const ROLE_ROUTES = {
+        'DIRECTOR': '/dashboard/director',  // Giám đốc — báo cáo chiến lược, read-only
+        'ADMIN':    '/dashboard/admin',     // Quản trị hệ thống — tài khoản, phân quyền
+        'HR':       '/dashboard/hr',        // Nhân sự — nghiệp vụ nhân sự toàn hệ thống
+        'EMPLOYEE': '/dashboard/employee'   // Nhân viên — tự phục vụ cá nhân
+    };
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+        const errorDiv = document.getElementById('errorMessage');
+        const btnLogin = document.getElementById('btnLogin');
+
+        // Reset lỗi cũ
+        errorDiv.style.display = 'none';
+        errorDiv.textContent   = '';
+
+        // Validate phía client trước khi gọi API
+        if (!username || !password) {
+            showError('Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.');
+            return;
+        }
+
+        // Hiện loading spinner
+        setLoading(true);
+
+        try {
+            const response = await fetch('/api/auth/login', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ username, password })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // ── Lưu token vào 2 nơi ──
+
+                // 1) sessionStorage — mỗi tab trình duyệt có bộ nhớ riêng, tránh bị tab khác ghi đè
+                sessionStorage.setItem('token', data.token);
+                sessionStorage.setItem('role', data.role);
+                sessionStorage.setItem('username', data.username);
+
+                console.log('>>> Đăng nhập thành công, role:', data.role);
+
+                // ── Điều hướng theo role ──
+                const destination = ROLE_ROUTES[data.role] || '/dashboard/employee';
+                // Truyền token qua URL để SSR /dashboard đọc đúng token khi refresh (F5)
+                const url = new URL(destination, window.location.origin);
+                url.searchParams.set('access_token', data.token);
+                window.location.href = url.toString();
+
+            } else {
+                // Server trả lỗi (401, 400...)
+                showError(data.message || 'Sai tên đăng nhập hoặc mật khẩu.');
+                setLoading(false);
+            }
+
+        } catch (error) {
+            console.error('>>> Lỗi kết nối:', error);
+            showError('Không thể kết nối tới máy chủ. Vui lòng thử lại.');
+            setLoading(false);
+        }
+    });
+
+    function showError(message) {
+        const errorDiv = document.getElementById('errorMessage');
+        errorDiv.textContent   = '⚠️ ' + message;
+        errorDiv.style.display = 'block';
+    }
+
+    function setLoading(isLoading) {
+        const btn = document.getElementById('btnLogin');
+        btn.disabled = isLoading;
+        btn.classList.toggle('loading', isLoading);
+    }
+
+    // Ẩn lỗi khi user bắt đầu gõ lại
+    ['username', 'password'].forEach(id => {
+        document.getElementById(id).addEventListener('input', () => {
+            document.getElementById('errorMessage').style.display = 'none';
+        });
+    });
+
+    // Nếu đã có token hợp lệ trong localStorage → redirect luôn, không cần login lại
+    (function checkExistingSession() {
+        const token = sessionStorage.getItem('token');
+        const role  = sessionStorage.getItem('role');
+        if (token && token !== 'null' && token !== 'undefined' && role) {
+            try {
+                const payload   = JSON.parse(atob(token.split('.')[1]));
+                const isExpired = payload.exp * 1000 < Date.now();
+                if (!isExpired) {
+                    const destination = ROLE_ROUTES[role] || '/dashboard/employee';
+                    const url = new URL(destination, window.location.origin);
+                    url.searchParams.set('access_token', token);
+                    window.location.href = url.toString();
+                } else {
+                    // Token hết hạn → xóa storage và cookie
+                    sessionStorage.clear();
+                    document.cookie = 'jwt_token=; path=/; Max-Age=0';
+                }
+            } catch (e) {
+                // Token lỗi format → xóa
+                sessionStorage.clear();
+                document.cookie = 'jwt_token=; path=/; Max-Age=0';
+            }
+        }
+    })();
+</script>
+
+</body>
+</html>

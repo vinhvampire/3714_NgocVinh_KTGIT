@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/dashboard-layout :: html(content=~{::page-content}, styles=~{dashboard/hr :: custom-styles}, scripts=~{::custom-scripts})}"
+      lang="vi">
+<head>
+    <title>HR - Chức vụ</title>
+</head>
+<body>
+
+<th:block th:fragment="page-content">
+
+    <div class="hr-banner">
+        <div class="hb-left">
+            <h2><i class="fa-solid fa-id-badge" style="margin-right:8px;opacity:.8"></i>Quản lý chức vụ</h2>
+            <p>Danh mục chức vụ dùng cho nhân sự và lương.</p>
+            <div class="hb-date" id="dateTime">...</div>
+        </div>
+    </div>
+
+    <th:block th:replace="~{fragments/hr-subnav :: subnav}"></th:block>
+    <th:block th:replace="~{fragments/hr-org-subnav :: org-subnav}"></th:block>
+
+    <div class="g2" style="align-items:start">
+        <div class="card">
+            <div class="card-hd">
+                <div class="card-title"><i class="fa-solid fa-plus" style="color:var(--hr);margin-right:6px"></i>Thêm chức vụ</div>
+            </div>
+            <form id="formAddChucVu">
+                <label class="modal-sub" style="display:block;margin-bottom:6px">Tên chức vụ</label>
+                <input type="text" class="modal-textarea" id="tenChucVu" required style="margin-bottom:14px;width:100%;box-sizing:border-box">
+                <button type="submit" class="btn-confirm-reject"
+                        style="background:var(--hr);color:#fff;padding:10px 14px;font-size:12px;border-radius:8px;border:none;cursor:pointer;width:100%">
+                    Lưu
+                </button>
+            </form>
+        </div>
+        <div class="card">
+            <div class="card-hd">
+                <div class="card-title"><i class="fa-solid fa-table-list" style="color:var(--hr);margin-right:6px"></i>Danh sách</div>
+            </div>
+            <table class="rank-table" style="width:100%">
+                <thead>
+                <tr><th>Mã</th><th>Tên chức vụ</th><th style="min-width:120px">Thao tác</th></tr>
+                </thead>
+                <tbody id="tableBody">
+                <tr><td colspan="3"><div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>Đang tải...</p></div></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="editCvModal">
+        <div class="modal-box" style="max-width:400px">
+            <div class="modal-title"><i class="fa-solid fa-pen" style="color:var(--hr);margin-right:6px"></i>Sửa chức vụ</div>
+            <input type="hidden" id="edit-cv-id">
+            <label class="modal-sub" style="display:block;margin-bottom:4px">Tên chức vụ</label>
+            <input type="text" class="modal-textarea" id="edit-cv-ten" style="margin-bottom:14px;width:100%;box-sizing:border-box">
+            <div class="modal-footer" style="display:flex;gap:10px;justify-content:flex-end">
+                <button type="button" class="btn-cancel" onclick="closeEditCv()">Hủy</button>
+                <button type="button" class="btn-confirm-reject" style="background:var(--hr);color:#fff;padding:8px 14px;border:none;border-radius:8px;cursor:pointer" onclick="saveEditCv()">Lưu</button>
+            </div>
+        </div>
+    </div>
+
+</th:block>
+
+<script th:fragment="custom-scripts">
+    function tick() {
+        const d = new Date();
+        const days = ['Chủ nhật','Thứ hai','Thứ ba','Thứ tư','Thứ năm','Thứ sáu','Thứ bảy'];
+        document.getElementById('dateTime').textContent = days[d.getDay()] + ', ' +
+            String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear() +
+            ' — ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    }
+    async function apiFetch(url, options = {}) {
+        const response = await fetch(url, { headers: getAuthHeaders(), ...options });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        return response;
+    }
+    async function loadChucVu() {
+        const tbody = document.getElementById('tableBody');
+        try {
+            const data = await (await apiFetch('/api/organizations/chuc-vu')).json();
+            if (!data.length) {
+                tbody.innerHTML = '<tr><td colspan="3"><div class="empty-state"><p>Chưa có chức vụ</p></div></td></tr>';
+                return;
+            }
+            tbody.innerHTML = data.map(cv => `<tr>
+                <td><strong>${cv.id}</strong></td>
+                <td>${cv.tenChucVu}</td>
+                <td>
+                    <button type="button" class="qa-approve" style="font-size:11px;padding:4px 8px" onclick='openEditCv(${JSON.stringify(cv.id)}, ${JSON.stringify(cv.tenChucVu)})'>Sửa</button>
+                    <button type="button" class="qa-reject" style="font-size:11px;padding:4px 8px" onclick='deleteChucVuRow(${JSON.stringify(cv.id)})'>Xóa</button>
+                </td>
+            </tr>`).join('');
+        } catch (e) {
+            tbody.innerHTML = '<tr><td colspan="3"><div class="empty-state"><p>Lỗi tải dữ liệu</p></div></td></tr>';
+        }
+    }
+    function openEditCv(id, ten) {
+        document.getElementById('edit-cv-id').value = id;
+        document.getElementById('edit-cv-ten').value = ten || '';
+        document.getElementById('editCvModal').classList.add('show');
+    }
+    function closeEditCv() {
+        document.getElementById('editCvModal').classList.remove('show');
+    }
+    async function saveEditCv() {
+        const id = document.getElementById('edit-cv-id').value;
+        const tenChucVu = document.getElementById('edit-cv-ten').value.trim();
+        if (!tenChucVu) { toast('Tên chức vụ không được để trống', 'warning'); return; }
+        try {
+            await apiFetch('/api/organizations/chuc-vu/' + encodeURIComponent(id), {
+                method: 'PUT',
+                body: JSON.stringify({ tenChucVu })
+            });
+            toast('Đã cập nhật chức vụ', 'success');
+            closeEditCv();
+            await loadChucVu();
+        } catch (e) {
+            toast('Cập nhật thất bại', 'warning');
+        }
+    }
+    async function deleteChucVuRow(id) {
+        if (!confirm('Xóa chức vụ ' + id + '? (Nhân viên / bảng lương đang dùng có thể lỗi)')) return;
+        try {
+            await apiFetch('/api/organizations/chuc-vu/' + encodeURIComponent(id), { method: 'DELETE' });
+            toast('Đã xóa', 'success');
+            await loadChucVu();
+        } catch (e) {
+            toast('Không xóa được', 'warning');
+        }
+    }
+    document.getElementById('formAddChucVu').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        try {
+            await apiFetch('/api/organizations/chuc-vu', {
+                method: 'POST',
+                body: JSON.stringify({ tenChucVu: document.getElementById('tenChucVu').value })
+            });
+            toast('Đã thêm chức vụ', 'success');
+            document.getElementById('tenChucVu').value = '';
+            await loadChucVu();
+        } catch (err) {
+            toast('Không thêm được', 'warning');
+        }
+    });
+    document.addEventListener('DOMContentLoaded', () => { tick(); loadChucVu(); });
+</script>
+
+</body>
+</html>

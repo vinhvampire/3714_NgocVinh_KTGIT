@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      th:replace="~{layouts/dashboard-layout :: html(content=~{::page-content}, styles=~{::custom-styles}, scripts=~{::custom-scripts})}" 
+      lang="vi">
+<head>
+    <title>Đơn Phép</title>
+</head>
+
+<body>
+
+<th:block th:fragment="page-content">
+
+    <div class="container">
+
+        <!-- Page Header -->
+        <div class="page-header">
+            <h2>
+                <i class="fas fa-calendar-alt"></i>
+                Đơn Phép
+            </h2>
+            <button class="btn-create" onclick="openLeaveModal()">
+                <i class="fas fa-plus"></i>
+                Tạo Đơn Phép Mới
+            </button>
+        </div>
+
+        <!-- Stats -->
+        <div class="stat-card-row">
+            <div class="stat-card">
+                <p>Chờ Duyệt</p>
+                <h3 id="pending-count">2</h3>
+            </div>
+            <div class="stat-card">
+                <p>Đã Phê Duyệt</p>
+                <h3 id="approved-count">8</h3>
+            </div>
+            <div class="stat-card">
+                <p>Bị Từ Chối</p>
+                <h3 id="rejected-count">1</h3>
+            </div>
+            <div class="stat-card">
+                <p>Ngày Phép Còn Lại</p>
+                <h3>12 ngày</h3>
+            </div>
+        </div>
+
+        <!-- Manager Pending Leaves -->
+        <div class="table-wrapper" style="margin-top:22px">
+            <div class="emp-toolbar leaves-toolbar">
+                <label class="emp-toolbar-label">Đơn chờ quản lý duyệt</label>
+                <button type="button" class="btn-sm" onclick="loadManagerLeaves()">Làm mới</button>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nhân viên</th>
+                        <th>Loại Phép</th>
+                        <th>Thời gian</th>
+                        <th>Trạng thái</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="managerLeavesTableBody">
+                    <tr>
+                        <td colspan="5" style="text-align:center; color:#6B7280; padding:15px;">
+                            Đang tải dữ liệu đơn chờ...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Leave List Table -->
+        <div class="table-wrapper">
+            <div class="emp-toolbar leaves-toolbar">
+                <label class="emp-toolbar-label">Trạng thái</label>
+                <select class="filter-select" id="leaveStatusFilter" onchange="onLeaveFiltersChange()">
+                    <option value="">Tất cả</option>
+                    <option value="CHO_QL_DUYET">Chờ quản lý duyệt</option>
+                    <option value="CHO_HR_XAC_NHAN">Chờ HR xác nhận</option>
+                    <option value="DA_DUYET">Đã duyệt</option>
+                    <option value="TU_CHOI">Từ chối</option>
+                </select>
+                <label class="emp-toolbar-label">Sắp xếp</label>
+                <select class="filter-select" id="leaveSort" onchange="onLeaveFiltersChange()">
+                    <option value="tuNgay_desc">Từ ngày mới nhất</option>
+                    <option value="tuNgay_asc">Từ ngày cũ nhất</option>
+                    <option value="status">Trạng thái (A→Z)</option>
+                </select>
+                <label class="emp-toolbar-label">/ trang</label>
+                <select class="filter-select" id="leavePageSize" onchange="onLeaveFiltersChange()">
+                    <option value="5">5</option>
+                    <option value="8" selected>8</option>
+                    <option value="15">15</option>
+                </select>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Loại Phép</th>
+                        <th>Từ Ngày</th>
+                        <th>Đến Ngày</th>
+                        <th>Ngày Phép</th>
+                        <th>Trạng Thái</th>
+                        <th>Thao Tác</th>
+                    </tr>
+                </thead>
+                <tbody id="leavesTable">
+                    <tr>
+                        <td colspan="6" style="text-align:center; color:#6B7280; padding:15px;">Đang tải dữ liệu đơn phép...</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="emp-pagination" id="leavePagination"></div>
+        </div>
+
+    </div>
+
+    <!-- Modal: Tạo Đơn Phép Mới -->
+    <div class="modal" id="leaveModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Tạo Đơn Phép Mới</h3>
+                <button class="modal-close" onclick="closeLeaveModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Loại Phép</label>
+                    <select id="leaveType">
+                        <option value="">-- Chọn Loại Phép --</option>
+                        <option value="PH_NAM">Phép năm</option>
+                        <option value="NGHI_OM">Phép ốm</option>
+                        <option value="KHONG_LUONG">Phép không lương</option>
+                        <option value="KHAC">Khác</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Từ Ngày</label>
+                    <input type="date" id="leaveFromDate" />
+                </div>
+
+                <div class="form-group">
+                    <label>Đến Ngày</label>
+                    <input type="date" id="leaveToDate" />
+                </div>
+
+                <div class="form-group">
+                    <label>Lý Do</label>
+                    <textarea id="leaveReason" placeholder="Nhập lý do xin phép..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeLeaveModal()">Hủy</button>
+                <button class="btn-primary" onclick="submitLeaveRequest()">Gửi Đơn</button>
+            </div>
+        </div>
+    </div>
+
+</th:block>
+
+<style th:fragment="custom-styles">
+    .container { max-width: 100%; }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        gap: 12px;
+    }
+
+    .page-header h2 {
+        font-size: 20px;
+        font-weight: 800;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .btn-create {
+        background: #FF6B35;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 24px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all .18s;
+        font-family: 'Nunito', sans-serif;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-create:hover {
+        background: #e55a25;
+        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+    }
+
+    .stat-card-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .stat-card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 2px 12px rgba(0,0,0,.07);
+    }
+
+    .stat-card p {
+        font-size: 12px;
+        font-weight: 700;
+        color: #6B7280;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+    }
+
+    .stat-card h3 {
+        font-size: 20px;
+        font-weight: 800;
+        color: #1F2937;
+        margin: 0;
+    }
+
+    .table-wrapper {
+        background: #fff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 12px rgba(0,0,0,.07);
+    }
+
+    .emp-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px 14px;
+        padding: 12px 16px;
+        background: #F9FAFB;
+        border-bottom: 1px solid #E5E7EB;
+    }
+
+    .emp-toolbar-label {
+        font-size: 12px;
+        font-weight: 700;
+        color: #6B7280;
+    }
+
+    .emp-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 16px;
+        border-top: 1px solid #E5E7EB;
+        font-size: 13px;
+        color: #6B7280;
+        flex-wrap: wrap;
+    }
+
+    .emp-pagination-btns {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .emp-pagination-btns button {
+        padding: 6px 14px;
+        border-radius: 8px;
+        border: 1px solid #E5E7EB;
+        background: #fff;
+        font-family: 'Nunito', sans-serif;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        color: #374151;
+    }
+
+    .emp-pagination-btns button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+    .emp-pagination-btns button:not(:disabled):hover {
+        border-color: #FF6B35;
+        color: #FF6B35;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+    thead {
+        background: #F9FAFB;
+        border-bottom: 1px solid #E5E7EB;
+    }
+
+    th {
+        padding: 14px 16px;
+        text-align: left;
+        font-weight: 700;
+        color: #6B7280;
+        text-transform: uppercase;
+        font-size: 11px;
+        letter-spacing: .05em;
+    }
+
+    tbody tr {
+        border-bottom: 1px solid #F3F4F6;
+        transition: background .15s;
+    }
+
+    tbody tr:hover {
+        background: #F9FAFB;
+    }
+
+    td {
+        padding: 14px 16px;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 700;
+        text-align: center;
+    }
+
+    .status-pending {
+        background: #FEF3C7;
+        color: #D97706;
+    }
+
+    .status-approved {
+        background: #ECFDF5;
+        color: #10B981;
+    }
+
+    .status-rejected {
+        background: #FEF2F2;
+        color: #EF4444;
+    }
+
+    .action-btns {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-sm {
+        background: #EFF6FF;
+        color: #3B82F6;
+        border: none;
+        border-radius: 6px;
+        padding: 6px 12px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all .15s;
+        font-family: 'Nunito', sans-serif;
+    }
+
+    .btn-sm:hover {
+        background: #DBEAFE;
+    }
+
+    .no-data {
+        text-align: center;
+        padding: 60px 24px;
+        color: #9CA3AF;
+    }
+
+    .no-data i {
+        font-size: 48px;
+        margin-bottom: 16px;
+        color: #D1D5DB;
+    }
+
+    .no-data p {
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    /* Modal */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: #fff;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        padding: 24px;
+        border-bottom: 1px solid #E5E7EB;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h3 {
+        font-size: 16px;
+        font-weight: 800;
+        margin: 0;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+        color: #6B7280;
+    }
+
+    .modal-body {
+        padding: 24px;
+    }
+
+    .modal-footer {
+        padding: 16px 24px;
+        border-top: 1px solid #E5E7EB;
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+    }
+
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    .form-group label {
+        font-size: 13px;
+        font-weight: 700;
+        color: #374151;
+        margin-bottom: 6px;
+        display: block;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        border-radius: 8px;
+        border: 1.5px solid #E5E7EB;
+        font-size: 13px;
+        padding: 10px 14px;
+        font-family: 'Nunito', sans-serif;
+        transition: border-color .15s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: #FF6B35;
+        box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.12);
+    }
+
+    .form-group textarea {
+        resize: vertical;
+        min-height: 80px;
+    }
+
+    .btn-primary {
+        background: #FF6B35;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 24px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all .18s;
+        font-family: 'Nunito', sans-serif;
+    }
+
+    .btn-primary:hover {
+        background: #e55a25;
+    }
+
+    .btn-secondary {
+        background: #E5E7EB;
+        color: #374151;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 24px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all .15s;
+        font-family: 'Nunito', sans-serif;
+    }
+
+    .btn-secondary:hover {
+        background: #d1d5db;
+    }
+
+    @media (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .btn-create {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .modal-content {
+            width: 95%;
+        }
+
+        table {
+            font-size: 12px;
+        }
+
+        th, td {
+            padding: 10px 8px;
+        }
+    }
+</style>
+
+<script th:fragment="custom-scripts" th:inline="javascript">
+    let leavesAll = [];
+    let leavePage = 1;
+
+    // Biến toàn cục từ Thymeleaf
+    const CURRENT_NV_ID = /*[[${nhanVienId}]]*/ "null";
+
+    // Hàm lấy JWT token theo từng tab (sessionStorage) + fallback URL
+    function getJwtToken() {
+        // Ưu tiên token trên URL để tránh dùng token cũ trong sessionStorage
+        const params = new URL(window.location.href).searchParams;
+        const fromUrl = params.get('access_token');
+        if (fromUrl && fromUrl !== 'null' && fromUrl !== 'undefined') {
+            sessionStorage.setItem('token', fromUrl);
+            return fromUrl;
+        }
+
+        const fromSession = sessionStorage.getItem('token');
+        if (fromSession && fromSession !== 'null' && fromSession !== 'undefined') return fromSession;
+
+        // Fallback cookie (giữ tương thích luồng cũ)
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; jwt_token=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return null;
+    }
+
+    // Hàm tạo header Authorization chuẩn
+    function getAuthHeaders() {
+        const token = getJwtToken();
+        return {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+        };
+    }
+
+    function withAccessToken(url) {
+        const token = getJwtToken();
+        if (!token) return url;
+        const u = new URL(url, window.location.origin);
+        if (!u.searchParams.has('access_token')) {
+            u.searchParams.set('access_token', token);
+        }
+        return u.pathname + u.search;
+    }
+
+    function openLeaveModal() {
+        document.getElementById('leaveModal').classList.add('active');
+    }
+
+    function closeLeaveModal() {
+        document.getElementById('leaveModal').classList.remove('active');
+    }
+
+    function leaveTypeLabel(loai) {
+        const m = {
+            PH_NAM: 'Phép năm',
+            PHEP_NAM: 'Phép năm',
+            NGHI_OM: 'Phép ốm',
+            KHONG_LUONG: 'Không lương',
+            KHAC: 'Khác'
+        };
+        return m[loai] || loai || '—';
+    }
+
+    function onLeaveFiltersChange() {
+        leavePage = 1;
+        renderLeaveTablePage();
+    }
+
+    function renderLeaveTablePage() {
+        const table = document.getElementById('leavesTable');
+        const pag = document.getElementById('leavePagination');
+        if (!table) return;
+
+        let list = leavesAll.slice();
+        const fs = document.getElementById('leaveStatusFilter').value;
+        if (fs) list = list.filter(l => (l.trangThai || '') === fs);
+
+        const sort = document.getElementById('leaveSort').value;
+        list.sort((a, b) => {
+            if (sort === 'status') return (a.trangThai || '').localeCompare(b.trangThai || '', 'vi');
+            const da = a.tuNgay ? new Date(a.tuNgay).getTime() : 0;
+            const db = b.tuNgay ? new Date(b.tuNgay).getTime() : 0;
+            return sort === 'tuNgay_asc' ? da - db : db - da;
+        });
+
+        const pageSize = Math.max(1, parseInt(document.getElementById('leavePageSize').value, 10) || 8);
+        const total = list.length;
+        const pages = Math.max(1, Math.ceil(total / pageSize));
+        if (leavePage > pages) leavePage = pages;
+        const start = (leavePage - 1) * pageSize;
+        const slice = list.slice(start, start + pageSize);
+
+        const statusMap = {
+            'CHO_QL_DUYET': { text: '⏳ Chờ quản lý duyệt', css: 'status-pending' },
+            'CHO_HR_XAC_NHAN': { text: '⏳ Chờ HR xác nhận', css: 'status-pending' },
+            'DA_DUYET': { text: '✓ Đã Phê Duyệt', css: 'status-approved' },
+            'TU_CHOI': { text: '✗ Từ Chối', css: 'status-rejected' }
+        };
+
+        if (total === 0) {
+            table.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#6B7280;">Không có đơn phép phù hợp.</td></tr>';
+        } else {
+            table.innerHTML = slice.map(item => {
+                const st = statusMap[item.trangThai] || { text: item.trangThai || '—', css: 'status-pending' };
+                const days = item.denNgay && item.tuNgay
+                    ? (Math.max(1, Math.round((new Date(item.denNgay) - new Date(item.tuNgay)) / (1000 * 60 * 60 * 24)) + 1)) + ' ngày'
+                    : '—';
+                const cancelBtn = (item.trangThai === 'CHO_QL_DUYET' || item.trangThai === 'CHO_HR_XAC_NHAN')
+                    ? `<button type="button" class="btn-sm" style="background: #FEF2F2; color: #EF4444;" onclick="cancelLeave(${item.id})">Hủy</button>`
+                    : '';
+                return `<tr>
+                    <td>${leaveTypeLabel(item.loaiNghi)}</td>
+                    <td>${item.tuNgay ? new Date(item.tuNgay).toLocaleDateString('vi-VN') : '—'}</td>
+                    <td>${item.denNgay ? new Date(item.denNgay).toLocaleDateString('vi-VN') : '—'}</td>
+                    <td>${days}</td>
+                    <td><span class="status-badge ${st.css}">${st.text}</span></td>
+                    <td><div class="action-btns">
+                        <button type="button" class="btn-sm" onclick="viewLeaveDetail(${item.id})">Xem</button>
+                        ${cancelBtn}
+                    </div></td>
+                </tr>`;
+            }).join('');
+        }
+
+        if (pag) {
+            pag.innerHTML = `
+                <span>Hiển thị ${total === 0 ? 0 : start + 1}–${Math.min(start + pageSize, total)} / ${total}</span>
+                <div class="emp-pagination-btns">
+                    <button type="button" ${leavePage <= 1 ? 'disabled' : ''} onclick="goLeavePage(${leavePage - 1})">← Trước</button>
+                    <span style="font-weight:700;color:#374151">Trang ${leavePage}/${pages}</span>
+                    <button type="button" ${leavePage >= pages ? 'disabled' : ''} onclick="goLeavePage(${leavePage + 1})">Sau →</button>
+                </div>`;
+        }
+    }
+
+    function goLeavePage(p) {
+        leavePage = Math.max(1, p);
+        renderLeaveTablePage();
+    }
+
+    async function loadLeavePage() {
+        try {
+            const [statsResp, leavesResp] = await Promise.all([
+                fetch(withAccessToken('/api/dashboard/employee/stats'), { headers: getAuthHeaders() }),
+                fetch(withAccessToken('/api/dashboard/employee/leaves'), { headers: getAuthHeaders() })
+            ]);
+
+            let remaining = 0;
+            if (statsResp.ok) {
+                const statsCt = statsResp.headers.get('content-type') || '';
+                if (!statsCt.includes('application/json')) {
+                    const t = await statsResp.text().catch(() => '');
+                    throw new Error('Non-JSON response from /api/dashboard/employee/stats: ' + (t || '').slice(0, 160));
+                }
+                const stats = await statsResp.json();
+                remaining = stats.phepConLai || 0;
+            }
+
+            const table = document.getElementById('leavesTable');
+            if (!leavesResp.ok) {
+                table.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#EF4444;">Không thể tải dữ liệu đơn phép.</td></tr>';
+                return;
+            }
+
+            const leavesCt = leavesResp.headers.get('content-type') || '';
+            if (!leavesCt.includes('application/json')) {
+                const t = await leavesResp.text().catch(() => '');
+                throw new Error('Non-JSON response from /api/dashboard/employee/leaves: ' + (t || '').slice(0, 160));
+            }
+            leavesAll = await leavesResp.json();
+            if (!Array.isArray(leavesAll)) leavesAll = [];
+
+            const pending = leavesAll.filter(l => l.trangThai === 'CHO_QL_DUYET' || l.trangThai === 'CHO_HR_XAC_NHAN').length;
+            const approved = leavesAll.filter(l => l.trangThai === 'DA_DUYET').length;
+            const rejected = leavesAll.filter(l => l.trangThai === 'TU_CHOI').length;
+
+            document.getElementById('pending-count').textContent = pending;
+            document.getElementById('approved-count').textContent = approved;
+            document.getElementById('rejected-count').textContent = rejected;
+            document.querySelector('.stat-card-row .stat-card:nth-child(4) h3').textContent = remaining + ' ngày';
+
+            leavePage = 1;
+            renderLeaveTablePage();
+        } catch (err) {
+            console.error('Lỗi khi tải dữ liệu đơn phép:', err);
+            const table = document.getElementById('leavesTable');
+            table.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#EF4444;">Lỗi kết nối máy chủ.</td></tr>';
+        }
+    }
+
+    function managerLeaveTypeLabel(loai) {
+        const m = {
+            PHEP_NAM: 'Phép năm',
+            PHEP_OM: 'Phép ốm',
+            NGHI_LE: 'Nghỉ lễ',
+            KHAC: 'Khác'
+        };
+        const key = (loai || '').toUpperCase().trim();
+        return m[key] || loai || '—';
+    }
+
+    function managerLeaveStatusLabel(trangThai) {
+        const st = (trangThai || '').toUpperCase().trim();
+        if (st === 'CHO_QL_DUYET') return 'Chờ quản lý duyệt';
+        if (st === 'CHO_HR_XAC_NHAN') return 'Chờ HR xác nhận';
+        if (st === 'DA_DUYET') return 'Đã duyệt';
+        if (st === 'TU_CHOI') return 'Từ chối';
+        return trangThai || '—';
+    }
+
+    async function loadManagerLeaves() {
+        const tbody = document.getElementById('managerLeavesTableBody');
+        if (!tbody) return;
+
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#6B7280; padding:15px;">
+            Đang tải đơn chờ quản lý...
+        </td></tr>`;
+
+        try {
+            const res = await fetch(withAccessToken('/api/dashboard/director/leaves/pending'), { headers: getAuthHeaders() });
+            if (!res.ok) throw new Error('Failed to load manager pending leaves');
+            const list = await res.json();
+            if (!Array.isArray(list) || list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#6B7280; padding:15px;">
+                    Không có đơn chờ quản lý duyệt
+                </td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = list.slice(0, 8).map(d => {
+                const st = (d.trangThai || '').toUpperCase().trim();
+                const badgeCls =
+                    st === 'DA_DUYET' ? 'status-approved' :
+                        st === 'TU_CHOI' ? 'status-rejected' :
+                            'status-pending';
+
+                return `
+                    <tr>
+                        <td>${d.tenNV || '—'}</td>
+                        <td>${managerLeaveTypeLabel(d.loaiPhep)}</td>
+                        <td>${d.tuNgay || '—'} → ${d.denNgay || '—'}</td>
+                        <td><span class="status-badge ${badgeCls}">${managerLeaveStatusLabel(d.trangThai)}</span></td>
+                        <td>
+                            <div class="action-btns" style="flex-wrap:wrap">
+                                <button type="button" class="btn-sm"
+                                    style="background: #ECFDF5; color: #10B981; border: none;"
+                                    onclick="approveManagerLeave(${d.id})">Duyệt</button>
+                                <button type="button" class="btn-sm"
+                                    style="background: #FEF2F2; color: #EF4444; border: none;"
+                                    onclick="rejectManagerLeave(${d.id})">Từ chối</button>
+                            </div>
+                        </td>
+                    </tr>`;
+            }).join('');
+        } catch (err) {
+            console.error('loadManagerLeaves error', err);
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#EF4444; padding:15px;">
+                Lỗi tải dữ liệu
+            </td></tr>`;
+        }
+    }
+
+    async function approveManagerLeave(leaveId) {
+        if (!leaveId) return;
+        if (!confirm('Duyệt đơn nghỉ phép này?')) return;
+        try {
+            const r = await fetch(withAccessToken(`/api/dashboard/director/leaves/${leaveId}/approve`), {
+                method: 'PUT',
+                headers: getAuthHeaders()
+            });
+            if (!r.ok) throw new Error(await r.text());
+            toast && toast('Đã duyệt đơn', 'success');
+            await loadManagerLeaves();
+            await loadLeavePage();
+        } catch (e) {
+            console.error(e);
+            toast ? toast('Không thể duyệt đơn', 'error') : alert('Không thể duyệt đơn');
+        }
+    }
+
+    async function rejectManagerLeave(leaveId) {
+        if (!leaveId) return;
+        const reason = prompt('Nhập lý do từ chối:');
+        if (reason == null) return;
+        try {
+            const r = await fetch(withAccessToken(`/api/dashboard/director/leaves/${leaveId}/reject`), {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ reason })
+            });
+            if (!r.ok) throw new Error(await r.text());
+            toast && toast('Đã từ chối đơn', 'warning');
+            await loadManagerLeaves();
+            await loadLeavePage();
+        } catch (e) {
+            console.error(e);
+            toast ? toast('Không thể từ chối đơn', 'error') : alert('Không thể từ chối đơn');
+        }
+    }
+
+    async function submitLeaveRequest() {
+        const leaveType = document.getElementById('leaveType').value;
+        const fromDate = document.getElementById('leaveFromDate').value;
+        const toDate = document.getElementById('leaveToDate').value;
+        const reason = document.getElementById('leaveReason').value;
+
+        if (!leaveType || !fromDate || !toDate || !reason) {
+            toast('⚠️ Vui lòng điền đầy đủ các trường', 'warning');
+            return;
+        }
+
+        if (new Date(fromDate) > new Date(toDate)) {
+            toast('⚠️ Ngày bắt đầu không thể sau ngày kết thúc', 'warning');
+            return;
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (new Date(fromDate) < today) {
+            toast('⚠️ Không thể xin phép cho ngày trong quá khứ', 'warning');
+            return;
+        }
+
+        try {
+            const payload = {
+                loaiNghi: leaveType,
+                tuNgay: fromDate,
+                denNgay: toDate,
+                lyDo: reason
+            };
+
+            const res = await fetch(withAccessToken('/api/dashboard/employee/leaves'), {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) {
+                const message = await res.text();
+                toast('✕ ' + (message || 'Không thể gửi đơn phép'), 'error');
+                return;
+            }
+
+            toast('✓ Đơn phép đã được gửi thành công!', 'success');
+            closeLeaveModal();
+            loadLeavePage();
+        } catch (err) {
+            console.error(err);
+            toast('✕ Lỗi kết nối máy chủ', 'error');
+        }
+    }
+
+    function viewLeaveDetail(id) {
+        const item = leavesAll.find(l => l.id === id);
+        if (!item) {
+            toast('Không tìm thấy đơn.', 'warning');
+            return;
+        }
+        const msg = [
+            leaveTypeLabel(item.loaiNghi),
+            `${item.tuNgay || ''} → ${item.denNgay || ''}`,
+            item.lyDo || '(Không có lý do)'
+        ].join('\n');
+        alert('Chi tiết đơn phép #' + id + '\n\n' + msg);
+    }
+
+    async function cancelLeave(id) {
+        if (!id) return;
+        if (!confirm('Bạn có chắc muốn hủy đơn phép này?')) return;
+
+        try {
+            const res = await fetch(withAccessToken(`/api/dashboard/employee/leaves/${id}`), {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+
+            if (!res.ok) {
+                const message = await res.text();
+                toast('✕ ' + (message || 'Không thể hủy đơn phép'), 'error');
+                return;
+            }
+
+            toast('✓ Đơn phép đã được hủy', 'success');
+            loadLeavePage();
+        } catch (err) {
+            console.error(err);
+            toast('✕ Lỗi kết nối máy chủ', 'error');
+        }
+    }
+
+    document.getElementById('leaveModal').addEventListener('click', function (e) {
+        if (e.target === this) {
+            closeLeaveModal();
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadLeavePage();
+        loadManagerLeaves();
+    });
+</script>
+
+</body>
+</html>

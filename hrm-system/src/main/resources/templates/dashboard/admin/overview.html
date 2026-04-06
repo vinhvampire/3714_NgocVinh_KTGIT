@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/dashboard-layout :: html(content=~{::page-content}, styles=~{dashboard/admin/admin-shared :: styles}, scripts=~{::custom-scripts})}"
+      lang="vi">
+<head>
+    <title>Admin — Tổng quan</title>
+</head>
+<body>
+
+<th:block th:fragment="page-content">
+
+    <div class="admin-banner">
+        <div class="ab-left">
+            <h2><i class="fa-solid fa-screwdriver-wrench" style="margin-right:8px;opacity:.8"></i>Quản trị hệ thống</h2>
+            <p>Tài khoản, phân quyền và giám sát truy cập — tách biệt nghiệp vụ HR</p>
+            <div class="ab-date" id="dateTime">...</div>
+        </div>
+        <div class="ab-right">
+            <div class="ab-pill">
+                <div class="num" id="totalAccounts">—</div>
+                <div class="lbl">Tổng TK</div>
+            </div>
+            <div class="ab-pill">
+                <div class="num" id="activeAccounts" style="color:#86efac">—</div>
+                <div class="lbl">Đang HĐ</div>
+            </div>
+            <div class="ab-pill">
+                <div class="num" id="lockedAccounts" style="color:#fca5a5">—</div>
+                <div class="lbl">Bị khóa</div>
+            </div>
+            <div class="ab-pill">
+                <div class="num" id="unassignedAccounts" style="color:#fcd34d">—</div>
+                <div class="lbl">Chưa gán NV</div>
+            </div>
+        </div>
+    </div>
+
+    <th:block th:replace="~{fragments/admin-subnav :: subnav}"></th:block>
+
+    <div class="g4" id="kpiGrid">
+        <div class="kpi-card">
+            <div class="kpi-icon" style="background:var(--adm-s);color:var(--adm)"><i class="fa-solid fa-users"></i></div>
+            <div>
+                <div class="kpi-lbl">Tổng tài khoản</div>
+                <div class="kpi-val" id="kpiTotal">—</div>
+                <div class="kpi-sub"><span class="badge" style="background:var(--ok-s);color:var(--ok)" id="kpiActive">—</span></div>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon" style="background:var(--err-s);color:var(--err)"><i class="fa-solid fa-lock"></i></div>
+            <div>
+                <div class="kpi-lbl">Tài khoản bị khóa</div>
+                <div class="kpi-val" id="kpiLocked">—</div>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon" style="background:var(--warn-s);color:var(--warn)"><i class="fa-solid fa-link-slash"></i></div>
+            <div>
+                <div class="kpi-lbl">Chưa gán nhân viên</div>
+                <div class="kpi-val" id="kpiUnassigned">—</div>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon" style="background:var(--ok-s);color:var(--ok)"><i class="fa-solid fa-user-plus"></i></div>
+            <div>
+                <div class="kpi-lbl">Tạo mới tháng này</div>
+                <div class="kpi-val" id="kpiNewThisMonth">—</div>
+                <div class="kpi-sub"><span class="badge" style="background:var(--ok-s);color:var(--ok)" id="kpiMonthLabel">tháng hiện tại</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="g2">
+        <div class="card">
+            <div class="card-hd">
+                <div class="card-title"><i class="fa-solid fa-bolt" style="color:var(--adm);margin-right:6px"></i>Thao tác nhanh</div>
+            </div>
+            <p style="font-size:13px;color:var(--txt2);margin-bottom:14px">Mở trang quản lý tài khoản để tạo, khóa, gán nhân viên và đổi role.</p>
+            <a class="btn-add" href="/dashboard/admin/accounts" style="display:inline-flex;text-decoration:none"><i class="fa-solid fa-users-gear"></i> Quản lý tài khoản</a>
+        </div>
+        <div class="card">
+            <div class="card-hd">
+                <div class="card-title"><i class="fa-solid fa-shield-halved" style="color:var(--inf);margin-right:6px"></i>Phân quyền theo vai trò</div>
+                <a class="card-link" href="/dashboard/admin/permissions">Xem ma trận</a>
+            </div>
+            <p style="font-size:13px;color:var(--txt2)">DIRECTOR, ADMIN, HR, EMPLOYEE — xem mô tả quyền và luồng xử lý trong hệ thống.</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-hd">
+            <div class="card-title"><i class="fa-solid fa-list" style="color:var(--warn);margin-right:6px"></i>TK chưa gán nhân viên (xem nhanh)</div>
+            <a class="card-link" href="/dashboard/admin/accounts">Mở đầy đủ</a>
+        </div>
+        <div class="unassigned-list" id="overviewUnassigned"></div>
+    </div>
+
+</th:block>
+
+<script th:fragment="custom-scripts">
+    function tick() {
+        const d = new Date();
+        const days = ['Chủ nhật','Thứ hai','Thứ ba','Thứ tư','Thứ năm','Thứ sáu','Thứ bảy'];
+        document.getElementById('dateTime').textContent =
+            days[d.getDay()] + ', ' +
+            String(d.getDate()).padStart(2,'0') + '/' +
+            String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear() +
+            ' — ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    }
+    tick();
+    setInterval(tick, 30000);
+
+    async function loadStats() {
+        try {
+            const res = await fetch('/api/dashboard/admin/stats', { headers: getAuthHeaders() });
+            if (!res.ok) return;
+            const data = await res.json();
+            document.getElementById('totalAccounts').textContent = data.totalAccounts ?? '—';
+            document.getElementById('activeAccounts').textContent = data.activeAccounts ?? '—';
+            document.getElementById('lockedAccounts').textContent = data.lockedAccounts ?? '—';
+            document.getElementById('unassignedAccounts').textContent = data.unassignedAccounts ?? '—';
+            document.getElementById('kpiTotal').textContent = data.totalAccounts ?? '—';
+            document.getElementById('kpiActive').textContent = (data.activeAccounts ?? '—') + ' đang hoạt động';
+            document.getElementById('kpiLocked').textContent = data.lockedAccounts ?? '—';
+            document.getElementById('kpiUnassigned').textContent = data.unassignedAccounts ?? '—';
+            document.getElementById('kpiNewThisMonth').textContent = data.newThisMonth ?? '0';
+        } catch (e) { console.error(e); }
+    }
+
+    async function loadUnassignedPreview() {
+        const el = document.getElementById('overviewUnassigned');
+        try {
+            const res = await fetch('/api/dashboard/admin/accounts/unassigned', { headers: getAuthHeaders() });
+            if (!res.ok) { el.innerHTML = '<div class="empty-state"><p>Không tải được danh sách</p></div>'; return; }
+            const list = await res.json();
+            if (!list.length) {
+                el.innerHTML = '<div class="empty-state"><i class="fa-solid fa-circle-check" style="opacity:.4"></i><p>Không có tài khoản chưa gán NV</p></div>';
+                return;
+            }
+            el.innerHTML = list.slice(0, 5).map(t => `
+                <div class="unassigned-item">
+                    <div class="ua-av">${(t.username || '?').substring(0,1).toUpperCase()}</div>
+                    <div><div class="ua-name">${t.username || '—'}</div><div class="ua-role">${t.role || '—'}</div></div>
+                </div>`).join('');
+        } catch (e) {
+            el.innerHTML = '<div class="empty-state"><p>Lỗi tải dữ liệu</p></div>';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => { loadStats(); loadUnassignedPreview(); });
+</script>
+
+</body>
+</html>

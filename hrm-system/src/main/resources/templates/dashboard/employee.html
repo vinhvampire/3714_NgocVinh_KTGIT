@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      th:replace="~{layouts/dashboard-layout :: html(content=~{::page-content}, styles=~{::custom-styles}, scripts=~{::custom-scripts})}" 
+      lang="vi"><head>
+    <title>Employee Dashboard</title>
+</head>
+
+<body>
+
+<th:block th:fragment="page-content">
+
+    <!-- Welcome Banner -->
+    <div class="welcome-banner">
+        <div>
+            <h2>Chào buổi sáng, <span th:text="${username}"></span>! 👋</h2>
+            <p>Hãy kiểm tra thông tin công việc của bạn hôm nay.</p>
+            <p class="wb-date" id="currentDateTime"></p>
+        </div>
+        <div class="checkin-group">
+            <div class="checkin-status-txt">Trạng thái: <span id="ciStatus">Chưa Check-in</span></div>
+            <button class="ci-btn btn-in" id="btnCheckin" onclick="doCheckin()">
+                <i class="fas fa-fingerprint"></i> Check-in
+            </button>
+            <button class="ci-btn btn-out" id="btnCheckout" style="display: none;" onclick="doCheckout()">
+                <i class="fas fa-sign-out-alt"></i> Check-out
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistics -->
+    <div class="stat-grid">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #ECFDF5; color: #10B981;">
+                <i class="fas fa-calendar-check"></i>
+            </div>
+            <div>
+                <div class="stat-label">Ngày có mặt (tháng)</div>
+                <div class="stat-value" id="statNgayCoMat">18 <small>/ 22</small></div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #FEF3C7; color: #D97706;">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div>
+                <div class="stat-label">Đi muộn (tháng)</div>
+                <div class="stat-value" id="statDiMuon">2</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #EFF6FF; color: #3B82F6;">
+                <i class="fas fa-umbrella-beach"></i>
+            </div>
+            <div>
+                <div class="stat-label">Phép còn lại</div>
+                <div class="stat-value" id="statPhepConLai">8 <small>/ 12</small></div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #FFF0EB; color: #FF6B35;">
+                <i class="fas fa-money-bill-wave"></i>
+            </div>
+            <div>
+                <div class="stat-label">Lương tháng trước</div>
+                <div class="stat-value" id="statLuongThangTruoc" style="font-size: 18px;">12.4M ₫</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="grid-2col">
+
+        <!-- Leave Status -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-calendar-alt" style="margin-right: 8px; color: #FF6B35;"></i>
+                    Đơn Phép Gần Đây
+                </h3>
+                <a href="/dashboard/employee/leaves" class="card-link">Xem tất cả →</a>
+            </div>
+            <div id="recentLeavesContainer">
+                <div class="list-item">
+                    <div>
+                        <div style="font-weight: 700;">Phép Năm</div>
+                        <div style="color: #6B7280; font-size: 12px;">04/04/2026 - 1 ngày</div>
+                    </div>
+                    <span class="badge badge-pending">⏳ Chờ Duyệt</span>
+                </div>
+                <div class="list-item">
+                    <div>
+                        <div style="font-weight: 700;">Phép Ốm Đau</div>
+                        <div style="color: #6B7280; font-size: 12px;">25/03/2026 - 1 ngày</div>
+                    </div>
+                    <span class="badge badge-ok">✓ Phê Duyệt</span>
+                </div>
+                <div class="list-item">
+                    <div>
+                        <div style="font-weight: 700;">Phép Năm</div>
+                        <div style="color: #6B7280; font-size: 12px;">10/03/2026 - 3 ngày</div>
+                    </div>
+                    <span class="badge badge-ok">✓ Phê Duyệt</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Attendance Stats -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-chart-pie" style="margin-right: 8px; color: #FF6B35;"></i>
+                    Chuyên Cần Tháng Này
+                </h3>
+                <a href="/dashboard/employee/attendance" class="card-link">Chi tiết →</a>
+            </div>
+            <div>
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span>Đúng Giờ</span>
+                        <span style="color: #10B981; font-weight: 800;" id="pctDungGio">82%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="background: #10B981; width: 82%;"></div>
+                    </div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span>Đi Muộn</span>
+                        <span style="color: #D97706; font-weight: 800;" id="pctDiMuon">9%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="background: #D97706; width: 9%;"></div>
+                    </div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span>Vắng Mặt</span>
+                        <span style="color: #EF4444; font-weight: 800;" id="pctVangMat">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="background: #EF4444; width: 0%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Full Width Cards -->
+    <div class="card" style="margin-bottom: 24px;">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="fas fa-file-invoice-dollar" style="margin-right: 8px; color: #FF6B35;"></i>
+                Lương Gần Đây
+            </h3>
+            <a href="/dashboard/employee/payslip" class="card-link">Xem tất cả →</a>
+        </div>
+        <div id="recentPayslipsContainer">
+            <div class="list-item" style="border-bottom: 1px solid #F3F4F6; padding: 12px 0;">
+                <div>
+                    <div style="font-weight: 700;">Phiếu Lương Tháng 4/2026</div>
+                    <div style="color: #6B7280; font-size: 12px;">Lương Cơ Bản: 10M ₫ | Phụ Cấp: 1.5M ₫</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-weight: 800; color: #FF6B35;">10,456,000 ₫</span>
+                    <span class="badge badge-ok">✓ Đã Chốt</span>
+                </div>
+            </div>
+            <div class="list-item" style="border-bottom: 1px solid #F3F4F6; padding: 12px 0;">
+                <div>
+                    <div style="font-weight: 700;">Phiếu Lương Tháng 3/2026</div>
+                    <div style="color: #6B7280; font-size: 12px;">Lương Cơ Bản: 10M ₫ | Phụ Cấp: 1.5M ₫</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-weight: 800; color: #FF6B35;">10,456,000 ₫</span>
+                    <span class="badge badge-ok">✓ Đã Chốt</span>
+                </div>
+            </div>
+            <div class="list-item" style="padding: 12px 0;">
+                <div>
+                    <div style="font-weight: 700;">Phiếu Lương Tháng 2/2026</div>
+                    <div style="color: #6B7280; font-size: 12px;">Lương Cơ Bản: 10M ₫ | Phụ Cấp: 1.2M ₫</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-weight: 800; color: #FF6B35;">10,656,000 ₫</span>
+                    <span class="badge badge-warn">⏳ Chờ Chốt</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</th:block>
+
+<style th:fragment="custom-styles">
+    .welcome-banner {
+        background: linear-gradient(135deg, #FF6B35 0%, #e55a25 100%);
+        border-radius: 12px;
+        padding: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .welcome-banner::before {
+        content: '';
+        position: absolute;
+        top: -40px;
+        right: -20px;
+        width: 160px;
+        height: 160px;
+        background: rgba(255,255,255,.08);
+        border-radius: 50%;
+    }
+
+    .welcome-banner::after {
+        content: '';
+        position: absolute;
+        bottom: -50px;
+        right: 80px;
+        width: 110px;
+        height: 110px;
+        background: rgba(255,255,255,.05);
+        border-radius: 50%;
+    }
+
+    .welcome-banner h2 {
+        font-size: 20px;
+        font-weight: 800;
+        color: #fff;
+        margin: 0 0 4px 0;
+        z-index: 1;
+    }
+
+    .welcome-banner p {
+        font-size: 13px;
+        color: rgba(255,255,255,.82);
+        font-weight: 500;
+        margin: 0 0 8px 0;
+        z-index: 1;
+    }
+
+    .welcome-banner .wb-date {
+        font-size: 12px;
+        color: rgba(255,255,255,.7);
+        margin: 0;
+        font-weight: 600;
+        z-index: 1;
+    }
+
+    .checkin-group {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 8px;
+        z-index: 1;
+    }
+
+    .checkin-status-txt {
+        font-size: 12px;
+        color: rgba(255,255,255,.85);
+        font-weight: 600;
+    }
+
+    .checkin-status-txt span {
+        color: #fff;
+        font-weight: 800;
+    }
+
+    .ci-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 22px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 700;
+        border: none;
+        cursor: pointer;
+        transition: all .2s;
+        font-family: 'Nunito', sans-serif;
+    }
+
+    .ci-btn.btn-in {
+        background: #fff;
+        color: #FF6B35;
+    }
+
+    .ci-btn.btn-in:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 14px rgba(0,0,0,.2);
+    }
+
+    .ci-btn.btn-out {
+        background: rgba(255,255,255,.2);
+        color: #fff;
+        border: 1.5px solid rgba(255,255,255,.4);
+    }
+
+    .ci-btn.btn-out:hover {
+        background: rgba(255,255,255,.3);
+    }
+
+    .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .stat-card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 18px 20px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        box-shadow: 0 2px 12px rgba(0,0,0,.07);
+        transition: all .2s;
+    }
+
+    .stat-card:hover {
+        box-shadow: 0 4px 16px rgba(0,0,0,.12);
+        transform: translateY(-2px);
+    }
+
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        flex-shrink: 0;
+    }
+
+    .stat-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #6B7280;
+        margin-bottom: 3px;
+    }
+
+    .stat-value {
+        font-size: 22px;
+        font-weight: 800;
+        color: #1F2937;
+        line-height: 1.1;
+    }
+
+    .stat-value small {
+        font-size: 14px;
+        color: #9CA3AF;
+        font-weight: 600;
+    }
+
+    .grid-2col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        margin-bottom: 24px;
+    }
+
+    .card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 12px rgba(0,0,0,.07);
+    }
+
+    .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+    }
+
+    .card-title {
+        font-size: 15px;
+        font-weight: 800;
+        color: #1F2937;
+        margin: 0;
+    }
+
+    .card-link {
+        font-size: 12px;
+        font-weight: 600;
+        color: #FF6B35;
+        text-decoration: none;
+    }
+
+    .card-link:hover {
+        text-decoration: underline;
+    }
+
+    .progress-item {
+        margin-bottom: 14px;
+    }
+
+    .progress-label {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 6px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .progress-bar {
+        background: #F3F4F6;
+        border-radius: 20px;
+        height: 8px;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%;
+        border-radius: 20px;
+        transition: width .6s ease;
+    }
+
+    .list-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid #F3F4F6;
+        font-size: 13px;
+    }
+
+    .list-item:last-child {
+        border-bottom: none;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    .badge-ok {
+        background: #ECFDF5;
+        color: #10B981;
+    }
+
+    .badge-warn {
+        background: #FEF3C7;
+        color: #D97706;
+    }
+
+    .badge-pending {
+        background: #EFF6FF;
+        color: #3B82F6;
+    }
+
+    @media (max-width: 1024px) {
+        .grid-2col {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .welcome-banner {
+            flex-direction: column;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .checkin-group {
+            align-items: center;
+            width: 100%;
+        }
+
+        .checkin-group .ci-btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .stat-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<script th:fragment="custom-scripts" th:inline="javascript">
+    // Biến toàn cục từ Thymeleaf
+    const CURRENT_NV_ID = /*[[${nhanVienId}]]*/ "null";
+
+    // Hàm lấy JWT token theo từng tab (sessionStorage) + fallback URL
+    function getJwtToken() {
+        const fromSession = sessionStorage.getItem('token');
+        if (fromSession && fromSession !== 'null' && fromSession !== 'undefined') return fromSession;
+
+        const params = new URL(window.location.href).searchParams;
+        const fromUrl = params.get('access_token');
+        if (fromUrl && fromUrl !== 'null' && fromUrl !== 'undefined') {
+            sessionStorage.setItem('token', fromUrl);
+            return fromUrl;
+        }
+
+        // Fallback cookie (giữ tương thích luồng cũ)
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; jwt_token=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return null;
+    }
+
+    // Hàm tạo header Authorization chuẩn
+    function getAuthHeaders() {
+        const token = getJwtToken();
+        return {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+        };
+    }
+
+    // Cập nhật thời gian và chào hỏi
+    function updateDateTime() {
+        const now = new Date();
+        const hour = now.getHours();
+        let greeting = "Chào buổi tối";
+        if (hour < 12) greeting = "Chào buổi sáng";
+        else if (hour < 18) greeting = "Chào buổi chiều";
+
+        const options = {
+            weekday: 'long',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        };
+        const dateStr = now.toLocaleDateString('vi-VN', options);
+        const USERNAME = /*[[${username}]]*/ 'Người dùng';
+        document.querySelector('.welcome-banner h2').innerHTML = `${greeting}, <strong>${USERNAME}</strong>! 👋`;
+        document.getElementById('currentDateTime').textContent = dateStr;
+    }
+
+    // Load dữ liệu dashboard
+    async function loadDashboardData() {
+        try {
+            await Promise.all([
+                loadStats(),
+                loadRecentLeaves(),
+                loadAttendanceSummary(),
+                loadRecentPayslips()
+            ]);
+        } catch (err) {
+            console.error("Lỗi load data:", err);
+            toast('Không thể tải một số dữ liệu dashboard', 'error');
+        }
+    }
+
+    // Load thống kê
+    async function loadStats() {
+        try {
+            const res = await fetch('/api/dashboard/employee/stats', { headers: getAuthHeaders() });
+            if (!res.ok) throw new Error('Failed to load stats');
+            const data = await res.json();
+
+            // Cập nhật stat cards
+            document.getElementById('statNgayCoMat').innerHTML = `${data.ngayCoMat} <small>/ ${data.tongNgayCong}</small>`;
+            document.getElementById('statDiMuon').textContent = data.diMuon;
+            document.getElementById('statPhepConLai').innerHTML = `${data.phepConLai} <small>/ ${data.maxPhep}</small>`;
+            document.getElementById('statLuongThangTruoc').textContent = new Intl.NumberFormat('vi-VN').format(data.luongThangTruoc) + ' ₫';
+
+            // Cập nhật trạng thái check-in
+            const ci = data.checkinToday;
+            const ciStatus = document.getElementById('ciStatus');
+            const btnIn = document.getElementById('btnCheckin');
+            const btnOut = document.getElementById('btnCheckout');
+
+            if (ci.status === 'CHUA_CHECKIN') {
+                ciStatus.textContent = 'Chưa Check-in';
+                btnIn.style.display = 'flex';
+                btnOut.style.display = 'none';
+            } else {
+                const timeStr = ci.gioVao ? ci.gioVao.substring(0, 5) : '--:--';
+                ciStatus.innerHTML = `<span style="color:#fff">✓ Đã Check-in (${timeStr})</span>`;
+                if (ci.gioRa) {
+                    const outStr = ci.gioRa.substring(0, 5);
+                    ciStatus.innerHTML += ` | <span style="color:#fff">Check-out (${outStr})</span>`;
+                    btnIn.style.display = 'none';
+                    btnOut.style.display = 'none';
+                } else {
+                    btnIn.style.display = 'none';
+                    btnOut.style.display = 'flex';
+                }
+            }
+        } catch (err) {
+            console.error("Lỗi load stats:", err);
+        }
+    }
+
+    // Load đơn phép gần đây
+    async function loadRecentLeaves() {
+        try {
+            const res = await fetch('/api/dashboard/employee/leaves?limit=5', { headers: getAuthHeaders() });
+            if (!res.ok) throw new Error('Failed to load leaves');
+            const leaves = await res.json();
+
+            const container = document.getElementById('recentLeavesContainer');
+            container.innerHTML = '';
+
+            if (leaves.length === 0) {
+                container.innerHTML = '<div class="list-item">Chưa có đơn phép nào.</div>';
+                return;
+            }
+
+            leaves.forEach(l => {
+                const pending = l.trangThai === 'CHO_QL_DUYET' || l.trangThai === 'CHO_HR_XAC_NHAN';
+                const statusClass = pending ? 'badge-pending' : (l.trangThai === 'DA_DUYET' ? 'badge-ok' : 'badge-warn');
+                const statusTxt = pending
+                    ? (l.trangThai === 'CHO_QL_DUYET' ? '⏳ Chờ quản lý duyệt' : '⏳ Chờ HR xác nhận')
+                    : (l.trangThai === 'DA_DUYET' ? '✓ Phê Duyệt' : '✕ Từ Chối');
+                
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                item.innerHTML = `
+                    <div>
+                        <div style="font-weight: 700;">${l.loaiNghi === 'PH_NAM' ? 'Phép Năm' : l.loaiNghi}</div>
+                        <div style="color: #6B7280; font-size: 12px;">${new Date(l.tuNgay).toLocaleDateString('vi-VN')} - ${l.denNgay ? 'đến ' + new Date(l.denNgay).toLocaleDateString('vi-VN') : ''}</div>
+                    </div>
+                    <span class="badge ${statusClass}">${statusTxt}</span>
+                `;
+                container.appendChild(item);
+            });
+        } catch (err) {
+            console.error("Lỗi load leaves:", err);
+        }
+    }
+
+    // Load tóm tắt chấm công
+    async function loadAttendanceSummary() {
+        try {
+            const res = await fetch('/api/dashboard/employee/attendance-summary', { headers: getAuthHeaders() });
+            if (!res.ok) throw new Error('Failed to load attendance summary');
+            const data = await res.json();
+
+            document.getElementById('pctDungGio').textContent = data.pctDungGio + '%';
+            document.querySelector('.progress-item:nth-child(1) .progress-fill').style.width = data.pctDungGio + '%';
+            
+            document.getElementById('pctDiMuon').textContent = data.pctDiMuon + '%';
+            document.querySelector('.progress-item:nth-child(2) .progress-fill').style.width = data.pctDiMuon + '%';
+            
+            document.getElementById('pctVangMat').textContent = data.pctVangMat + '%';
+            document.querySelector('.progress-item:nth-child(3) .progress-fill').style.width = data.pctVangMat + '%';
+        } catch (err) {
+            console.error("Lỗi load attendance summary:", err);
+        }
+    }
+
+    // Load phiếu lương gần đây
+    async function loadRecentPayslips() {
+        try {
+            const res = await fetch('/api/dashboard/employee/payslips?limit=3', { headers: getAuthHeaders() });
+            if (!res.ok) throw new Error('Failed to load payslips');
+            const payslips = await res.json();
+
+            const container = document.getElementById('recentPayslipsContainer');
+            container.innerHTML = '';
+
+            if (payslips.length === 0) {
+                container.innerHTML = '<div class="list-item" style="padding: 12px 0;">Chưa có phiếu lương nào.</div>';
+                return;
+            }
+
+            payslips.forEach(p => {
+                const isPaid = p.trangThaiThanhToan === 'DA_THANH_TOAN' || p.trangThaiThanhToan === 'DA_CHOT';
+                const statusClass = isPaid ? 'badge-ok' : 'badge-warn';
+                const statusTxt = isPaid ? '✓ Đã Thanh Toán' : '⏳ Chờ Thanh Toán';
+
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                item.style.cssText = "border-bottom: 1px solid #F3F4F6; padding: 12px 0;";
+                item.innerHTML = `
+                    <div>
+                        <div style="font-weight: 700;">Phiếu Lương Tháng ${p.thangNam}</div>
+                        <div style="color: #6B7280; font-size: 12px;">Mã PL: ${p.id}</div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-weight: 800; color: #FF6B35;">${new Intl.NumberFormat('vi-VN').format(p.tongLuong)} ₫</span>
+                        <span class="badge ${statusClass}">${statusTxt}</span>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        } catch (err) {
+            console.error("Lỗi load payslips:", err);
+        }
+    }
+
+    // Check-in
+    async function doCheckin() {
+        if (!CURRENT_NV_ID || CURRENT_NV_ID === "null") {
+            toast('Lỗi: Không xác định được ID nhân viên', 'error');
+            return;
+        }
+        try {
+            const res = await fetch(`/api/attendance/check-in/${CURRENT_NV_ID}`, { 
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+            const msg = await res.text();
+            if (res.ok) {
+                toast('✓ ' + msg, 'success');
+                loadStats();
+            } else {
+                toast('✕ ' + msg, 'error');
+            }
+        } catch (err) {
+            toast('Lỗi kết nối máy chủ', 'error');
+        }
+    }
+
+    // Check-out
+    async function doCheckout() {
+        if (!CURRENT_NV_ID || CURRENT_NV_ID === "null") {
+            toast('Lỗi: Không xác định được ID nhân viên', 'error');
+            return;
+        }
+        try {
+            const res = await fetch(`/api/attendance/check-out/${CURRENT_NV_ID}`, { 
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+            const msg = await res.text();
+            if (res.ok) {
+                toast('✓ ' + msg, 'success');
+                loadStats();
+            } else {
+                toast('✕ ' + msg, 'error');
+            }
+        } catch (err) {
+            toast('Lỗi kết nối máy chủ', 'error');
+        }
+    }
+
+    // Khởi tạo khi DOM load
+    document.addEventListener('DOMContentLoaded', function() {
+        updateDateTime();
+        loadDashboardData();
+        console.log('>>> Employee dashboard initialized for NV:', CURRENT_NV_ID);
+    });
+</script>
+
+</body>
+</html>

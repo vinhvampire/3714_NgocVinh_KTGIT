@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+
+
+<div class="topbar-inner" th:fragment="topbar">
+    <div class="topbar-title-wrap">
+        <h2 class="page-title" th:text="${pageBreadcrumb}">Dashboard</h2>
+    </div>
+
+    <div class="topbar-right">
+        <div class="notif-wrap" th:if="${role == 'ADMIN' or role == 'HR' or role == 'EMPLOYEE' or role == 'DIRECTOR'}">
+            <button type="button" class="icon-btn" id="notifBellBtn" title="Thông báo" aria-expanded="false">
+                <i class="fas fa-bell"></i>
+                <span class="notif-dot" id="notifDot"></span>
+            </button>
+            <div class="notif-dropdown" id="notifDropdown" role="menu">
+                <div class="notif-dd-hd">
+                    <span>Thông báo</span>
+                    <button type="button" id="notifMarkAllRead" style="font-size:11px;font-weight:700;background:none;border:none;color:var(--pri);cursor:pointer">Đánh dấu đã đọc</button>
+                </div>
+                <div id="notifListBody">
+                    <div class="notif-item" style="color:var(--txt2)">Đang tải…</div>
+                </div>
+            </div>
+        </div>
+        <th:block th:if="${role != 'ADMIN' and role != 'HR' and role != 'EMPLOYEE' and role != 'DIRECTOR'}">
+
+            <button type="button" class="icon-btn" title="Thông báo" disabled>
+                <i class="fas fa-bell"></i>
+            </button>
+        </th:block>
+
+        <div class="t-avatar" title="Tài khoản" th:text="${#strings.substring(username, 0, 1).toUpperCase()}"></div>
+    </div>
+</div>
+
+</html>

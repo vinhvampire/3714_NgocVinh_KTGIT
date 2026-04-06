@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/dashboard-layout :: html(content=~{::page-content}, styles=~{dashboard/hr :: custom-styles}, scripts=~{::custom-scripts})}"
+      lang="vi">
+<head>
+    <title>HR - Hồ sơ nhân viên</title>
+</head>
+<body>
+
+<th:block th:fragment="page-content">
+    <style>
+        .tl-item { border-left: 3px solid var(--hr); padding-left: 18px; position: relative; padding-bottom: 18px; margin-left: 6px; }
+        .tl-item::before { content: ""; position: absolute; width: 11px; height: 11px; background: var(--hr); border-radius: 50%; left: -7px; top: 4px; }
+        .profile-select {
+            width: 100%; padding: 9px 12px; border: 1px solid #dde3ef; border-radius: 8px;
+            font-size: 13px; background: #fff; color: #374151; margin-bottom: 10px;
+            box-sizing: border-box; appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 12px center;
+        }
+        .profile-select:focus { outline: none; border-color: var(--hr); }
+        .section-sep { font-size: 11px; font-weight: 600; color: var(--hr); text-transform: uppercase;
+            letter-spacing: .08em; margin: 14px 0 8px; display: block; }
+    </style>
+
+    <div class="hr-banner">
+        <div class="hb-left">
+            <h2><i class="fa-solid fa-address-card" style="margin-right:8px;opacity:.8"></i>Hồ sơ nhân viên</h2>
+            <p>Cập nhật thông tin và xem lịch sử công tác.</p>
+            <div class="hb-date" id="dateTime">...</div>
+        </div>
+        <div class="hb-right">
+            <a href="/dashboard/hr/employees" class="card-link" style="color:#fff;border:1px solid rgba(255,255,255,.35);padding:8px 14px;border-radius:10px;background:rgba(255,255,255,.08)">← Danh sách</a>
+        </div>
+    </div>
+
+    <th:block th:replace="~{fragments/hr-subnav :: subnav}"></th:block>
+
+    <div id="noIdWarn" class="card" style="display:none;margin-bottom:16px;border-left:4px solid var(--warn)">
+        <div class="card-title">Thiếu tham số</div>
+        <p class="modal-sub" style="margin:0">Vui lòng mở hồ sơ từ danh sách nhân viên (có <code>?id=</code>).</p>
+    </div>
+
+    <div class="g2" id="profileGrid" style="align-items:start;display:none">
+        <div class="card">
+            <div class="card-hd">
+                <div class="card-title"><i class="fa-solid fa-pen" style="color:var(--hr);margin-right:6px"></i>Chỉnh sửa thông tin</div>
+            </div>
+            <form id="formUpdateNhanVien">
+                <!-- Thông tin cơ bản -->
+                <span class="section-sep">Thông tin cơ bản</span>
+                <label class="modal-sub" style="display:block;margin-bottom:6px">Họ và tên</label>
+                <input type="text" class="modal-textarea" id="hoTen" required style="margin-bottom:10px;width:100%;box-sizing:border-box">
+                <label class="modal-sub" style="display:block;margin-bottom:6px">Email công việc</label>
+                <input type="email" class="modal-textarea" id="emailCongViec" required style="margin-bottom:10px;width:100%;box-sizing:border-box">
+                <label class="modal-sub" style="display:block;margin-bottom:6px">Số điện thoại</label>
+                <input type="tel" class="modal-textarea" id="soDienThoai" style="margin-bottom:10px;width:100%;box-sizing:border-box">
+                <label class="modal-sub" style="display:block;margin-bottom:6px">Số CCCD</label>
+                <input type="text" class="modal-textarea" id="soCccd" style="margin-bottom:14px;width:100%;box-sizing:border-box">
+
+                <!-- Vị trí tổ chức -->
+                <span class="section-sep"><i class="fa-solid fa-sitemap" style="margin-right:5px"></i>Vị trí tổ chức</span>
+                <label class="modal-sub" style="display:block;margin-bottom:6px">Phòng ban</label>
+                <select id="phongBanId" class="profile-select">
+                    <option value="">-- Chưa gán --</option>
+                </select>
+                <label class="modal-sub" style="display:block;margin-bottom:6px">Chức vụ</label>
+                <select id="chucVuId" class="profile-select">
+                    <option value="">-- Chưa gán --</option>
+                </select>
+                <label class="modal-sub" style="display:block;margin-bottom:6px">Nhóm</label>
+                <select id="nhomId" class="profile-select">
+                    <option value="">-- Chưa gán --</option>
+                </select>
+
+                <button type="submit" class="btn-confirm-reject"
+                        style="background:var(--hr);color:#fff;padding:10px 14px;font-size:12px;border-radius:8px;border:none;cursor:pointer;width:100%;margin-top:6px">
+                    Lưu thay đổi
+                </button>
+            </form>
+        </div>
+        <div class="card">
+            <div class="card-hd">
+                <div class="card-title"><i class="fa-solid fa-clock-rotate-left" style="color:var(--hr);margin-right:6px"></i>Lịch sử công tác</div>
+            </div>
+            <div id="historyTimeline">
+                <p class="modal-sub" style="text-align:center">Đang tải...</p>
+            </div>
+        </div>
+    </div>
+
+</th:block>
+
+<script th:fragment="custom-scripts">
+    const urlParams = new URLSearchParams(window.location.search);
+    const employeeId = urlParams.get('id');
+
+    function tick() {
+        const d = new Date();
+        const days = ['Chủ nhật','Thứ hai','Thứ ba','Thứ tư','Thứ năm','Thứ sáu','Thứ bảy'];
+        document.getElementById('dateTime').textContent = days[d.getDay()] + ', ' +
+            String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear() +
+            ' — ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    }
+
+    async function apiFetch(url, options = {}) {
+        // getAuthHeaders() trả về Headers object (không phải plain object)
+        // → phải clone bằng new Headers(), không dùng Object.assign
+        const baseHeaders = getAuthHeaders(); // đã có Authorization + Content-Type + Accept
+        const { headers: extraHeaders, ...rest } = options;
+        // Nếu caller muốn thêm header tùy chỉnh, append vào bản sao
+        if (extraHeaders) {
+            const extra = (extraHeaders instanceof Headers)
+                ? extraHeaders
+                : new Headers(extraHeaders);
+            extra.forEach((val, key) => baseHeaders.set(key, val));
+        }
+        const response = await fetch(url, { headers: baseHeaders, ...rest });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        return response;
+    }
+
+    /** Populate một <select> từ danh sách [{id, tenXxx}] */
+    function populateSelect(selectId, items, labelKey, currentId) {
+        const sel = document.getElementById(selectId);
+        // giữ option "-- Chưa gán --"
+        while (sel.options.length > 1) sel.remove(1);
+        items.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item.id;
+            opt.textContent = item[labelKey] || item.id;
+            if (item.id === currentId) opt.selected = true;
+            sel.add(opt);
+        });
+    }
+
+    async function loadDropdowns(nv) {
+        const [pbList, cvList, nhomList] = await Promise.all([
+            apiFetch('/api/organizations/phong-ban').then(r => r.json()).catch(() => []),
+            apiFetch('/api/organizations/chuc-vu').then(r => r.json()).catch(() => []),
+            apiFetch('/api/organizations/nhom').then(r => r.json()).catch(() => [])
+        ]);
+        populateSelect('phongBanId', pbList, 'tenPhongBan', nv.phongBanId || '');
+        populateSelect('chucVuId',   cvList, 'tenChucVu',   nv.chucVuId   || '');
+        populateSelect('nhomId',     nhomList, 'tenNhom',   nv.nhomId     || '');
+    }
+
+    async function loadEmployeeData() {
+        const nv = await (await apiFetch('/api/dashboard/hr/employees/' + encodeURIComponent(employeeId))).json();
+        document.getElementById('hoTen').value        = nv.hoTen        || '';
+        document.getElementById('emailCongViec').value = nv.emailCongViec || '';
+        document.getElementById('soDienThoai').value  = nv.soDienThoai  || '';
+        document.getElementById('soCccd').value       = nv.soCccd       || '';
+        await loadDropdowns(nv);
+        return nv;
+    }
+
+    async function loadHistory() {
+        const container = document.getElementById('historyTimeline');
+        try {
+            const data = await (await apiFetch('/api/history/cong-tac/' + encodeURIComponent(employeeId))).json();
+            if (!data.length) {
+                container.innerHTML = '<p class="modal-sub" style="text-align:center">Chưa có lịch sử biến động.</p>';
+                return;
+            }
+            container.innerHTML = data.map(h => {
+                const date = new Date(h.tuNgay).toLocaleDateString('vi-VN');
+                let detail = h.phongBanMoi
+                    ? `<span class="st-badge st-warn">Điều chuyển</span><br>Từ <b>${h.phongBanCu || '—'}</b> → <b>${h.phongBanMoi}</b>`
+                    : `<span class="st-badge st-inf">Sự kiện</span>`;
+                return `<div class="tl-item"><small class="modal-sub">${date}</small><p class="modal-sub" style="margin:6px 0">${detail}</p><small class="modal-sub">"${h.ghiChu || 'Không có ghi chú'}"</small></div>`;
+            }).join('');
+        } catch (e) {
+            container.innerHTML = '<p class="modal-sub" style="text-align:center;color:var(--err)">Lỗi tải lịch sử</p>';
+        }
+    }
+
+    document.getElementById('formUpdateNhanVien').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const updatedData = {
+            hoTen:         document.getElementById('hoTen').value,
+            emailCongViec: document.getElementById('emailCongViec').value,
+            soDienThoai:   document.getElementById('soDienThoai').value,
+            soCccd:        document.getElementById('soCccd').value,
+            phongBanId:    document.getElementById('phongBanId').value   || null,
+            chucVuId:      document.getElementById('chucVuId').value     || null,
+            nhomId:        document.getElementById('nhomId').value       || null
+        };
+        try {
+            await apiFetch('/api/dashboard/hr/employees/' + encodeURIComponent(employeeId), {
+                method: 'PUT',
+                body: JSON.stringify(updatedData)
+            });
+            toast('Cập nhật thành công', 'success');
+            await loadEmployeeData();
+        } catch (err) {
+            toast('Cập nhật thất bại: ' + err.message, 'warning');
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        tick();
+        setInterval(tick, 30000);
+        if (!employeeId) {
+            document.getElementById('noIdWarn').style.display = 'block';
+            return;
+        }
+        document.getElementById('profileGrid').style.display = 'grid';
+        try {
+            await loadEmployeeData();
+            await loadHistory();
+        } catch (e) {
+            toast('Không tải được hồ sơ', 'warning');
+        }
+    });
+</script>
+
+</body>
+</html>

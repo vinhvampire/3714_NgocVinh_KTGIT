@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layouts/dashboard-layout :: html(content=~{::page-content}, styles=~{::custom-styles}, scripts=~{::custom-scripts})}" lang="vi">
+<head>
+    <title>HR Dashboard</title>
+</head>
+<body>
+
+<th:block th:fragment="page-content">
+
+    <style th:fragment="custom-styles">
+        /* ══ HR COLOR VARS ══ */
+        :root {
+            --hr:   #8B5CF6;
+            --hr-d: #7c3aed;
+            --hr-s: #F5F3FF;
+        }
+
+        /* ══ HR BANNER ══ */
+        .hr-banner {
+            background: linear-gradient(135deg, var(--hr) 0%, var(--hr-d) 100%);
+            border-radius: var(--radius); padding: 22px 28px;
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 24px; position: relative; overflow: hidden;
+        }
+        .hr-banner::before {
+            content: ''; position: absolute; top: -40px; right: -20px;
+            width: 160px; height: 160px; background: rgba(255,255,255,.06); border-radius: 50%;
+        }
+        .hr-banner::after {
+            content: ''; position: absolute; bottom: -50px; right: 80px;
+            width: 110px; height: 110px; background: rgba(255,255,255,.04); border-radius: 50%;
+        }
+        .hb-left h2 { font-size: 19px; font-weight: 800; color: #fff; margin-bottom: 4px; }
+        .hb-left p  { font-size: 13px; color: rgba(255,255,255,.75); font-weight: 500; }
+        .hb-date    { font-size: 12px; color: rgba(255,255,255,.6); margin-top: 8px; font-weight: 600; }
+        .hb-right { display: flex; gap: 10px; z-index: 1; }
+        .hb-pill {
+            display: flex; flex-direction: column; align-items: center;
+            background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
+            border-radius: 10px; padding: 10px 16px; min-width: 76px;
+        }
+        .hb-pill .num { font-size: 22px; font-weight: 800; color: #fff; line-height: 1; }
+        .hb-pill .lbl { font-size: 11px; color: rgba(255,255,255,.75); font-weight: 600; margin-top: 3px; text-align: center; }
+
+        /* ══ GRID ══ */
+        .g4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 24px; }
+        .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+
+        /* ══ CARD ══ */
+        .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
+        .card-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+        .card-title { font-size: 14px; font-weight: 800; color: var(--txt); }
+        .card-link { font-size: 12px; font-weight: 600; color: var(--hr); text-decoration: none; }
+        .card-link:hover { text-decoration: underline; }
+
+        /* ══ KPI CARDS ══ */
+        .kpi-card {
+            background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
+            padding: 18px 20px; display: flex; align-items: center; gap: 14px;
+        }
+        .kpi-icon { width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+        .kpi-lbl { font-size: 12px; font-weight: 600; color: var(--txt2); margin-bottom: 3px; }
+        .kpi-val { font-size: 22px; font-weight: 800; color: var(--txt); line-height: 1.1; }
+        .kpi-sub { font-size: 11px; color: var(--txt2); margin-top: 4px; }
+        .badge { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+
+        /* ══ TODO LIST ══ */
+        .todo-list { display: flex; flex-direction: column; gap: 10px; }
+        .todo-item {
+            display: flex; align-items: center; gap: 14px;
+            padding: 14px 16px; border-radius: 10px; border: 1px solid var(--border);
+            transition: all .18s; cursor: pointer; text-decoration: none;
+        }
+        .todo-item:hover { border-color: var(--hr); background: var(--hr-s); }
+        .todo-item.urgent { border-left: 4px solid var(--err); }
+        .todo-item.warn   { border-left: 4px solid var(--warn); }
+        .todo-item.info   { border-left: 4px solid var(--inf); }
+        .todo-item.ok     { border-left: 4px solid var(--ok); }
+        .todo-icon { width: 40px; height: 40px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+        .todo-content { flex: 1; }
+        .todo-title { font-size: 13.5px; font-weight: 700; color: var(--txt); margin-bottom: 2px; }
+        .todo-desc  { font-size: 12px; color: var(--txt2); }
+        .todo-count { font-size: 22px; font-weight: 800; flex-shrink: 0; }
+        .todo-arrow { color: var(--txt2); font-size: 13px; flex-shrink: 0; }
+
+        /* ══ DONUT CHART ══ */
+        .donut-wrap { position: relative; height: 200px; display: flex; align-items: center; justify-content: center; }
+        .donut-center { position: absolute; text-align: center; pointer-events: none; }
+        .donut-center .big { font-size: 26px; font-weight: 800; color: var(--txt); line-height: 1; }
+        .donut-center .sm  { font-size: 11px; color: var(--txt2); font-weight: 600; }
+        .donut-legend { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; }
+        .legend-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .legend-val  { margin-left: auto; font-weight: 800; color: var(--txt); }
+
+        /* ══ FILTER ══ */
+        .filter-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+        .filter-row label { font-size: 12px; font-weight: 600; color: var(--txt2); }
+        .filter-select {
+            font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 600; color: var(--txt);
+            border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px;
+            background: var(--bg); cursor: pointer; outline: none;
+        }
+        .filter-select:focus { border-color: var(--hr); }
+
+        /* ══ TOP 5 TABLE ══ */
+        .rank-table { width: 100%; border-collapse: collapse; }
+        .rank-table th {
+            font-size: 11px; font-weight: 700; color: var(--txt2);
+            text-transform: uppercase; letter-spacing:.04em;
+            padding: 8px 10px; text-align: left;
+            background: var(--bg); border-bottom: 1px solid var(--border);
+        }
+        .rank-table td { padding: 10px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        .rank-table tr:last-child td { border-bottom: none; }
+        .rank-table tr:hover td { background: var(--bg); }
+        .rank-num { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; }
+        .rank-1 { background: #FEF9C3; color: #92400E; }
+        .rank-2 { background: #F3F4F6; color: #374151; }
+        .rank-3 { background: #FEF3C7; color: #78350F; }
+        .rank-n { background: var(--bg); color: var(--txt2); }
+        .emp-cell { display: flex; align-items: center; gap: 9px; }
+        .emp-av { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; flex-shrink: 0; }
+        .emp-name { font-weight: 700; font-size: 13px; color: var(--txt); }
+        .emp-dept { font-size: 11px; color: var(--txt2); }
+        .late-bar-wrap { width: 80px; background: var(--bg); border-radius: 20px; height: 6px; overflow: hidden; }
+        .late-bar { height: 100%; border-radius: 20px; background: var(--err); }
+        .dept-tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; background: var(--hr-s); color: var(--hr); }
+
+        /* ══ LEAVE TABLE ══ */
+        .leave-table { width: 100%; border-collapse: collapse; }
+        .leave-table th {
+            font-size: 11px; font-weight: 700; color: var(--txt2);
+            text-transform: uppercase; letter-spacing:.04em;
+            padding: 8px 12px; text-align: left;
+            background: var(--bg); border-bottom: 1px solid var(--border);
+        }
+        .leave-table td { padding: 11px 12px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        .leave-table tr:last-child td { border-bottom: none; }
+        .leave-table tr:hover td { background: var(--bg); }
+        .leave-type-badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+        .approval-step { display: flex; flex-direction: column; gap: 2px; font-size: 11px; }
+        .step { display: flex; align-items: center; gap: 4px; font-weight: 600; }
+        .step .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+        .st-badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+        .st-ok   { background: var(--ok-s);   color: var(--ok); }
+        .st-warn { background: var(--warn-s); color: var(--warn); }
+        .st-err  { background: var(--err-s);  color: var(--err); }
+        .st-inf  { background: var(--inf-s);  color: var(--inf); }
+        .qa-approve, .qa-reject {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 5px 11px; border-radius: 6px;
+            font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700;
+            border: none; cursor: pointer; transition: all .18s;
+        }
+        .qa-approve { background: var(--ok-s); color: var(--ok); }
+        .qa-approve:hover { background: var(--ok); color: #fff; }
+        .qa-reject  { background: var(--err-s); color: var(--err); }
+        .qa-reject:hover  { background: var(--err); color: #fff; }
+
+        /* ══ MODAL ══ */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 9000; opacity: 0; pointer-events: none; transition: opacity .2s; }
+        .modal-overlay.show { opacity: 1; pointer-events: all; }
+        .modal-box { background: #fff; border-radius: 14px; padding: 24px; width: 420px; max-width: 92vw; box-shadow: 0 8px 40px rgba(0,0,0,.18); transform: translateY(12px); transition: transform .2s; }
+        .modal-overlay.show .modal-box { transform: translateY(0); }
+        .modal-title { font-size: 15px; font-weight: 800; color: var(--txt); margin-bottom: 4px; }
+        .modal-sub   { font-size: 13px; color: var(--txt2); margin-bottom: 16px; }
+        .modal-label { font-size: 12px; font-weight: 700; color: var(--txt2); margin-bottom: 5px; display: block; }
+        .modal-textarea { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-family: 'Nunito', sans-serif; font-size: 13px; color: var(--txt); resize: vertical; min-height: 80px; outline: none; }
+        .modal-textarea:focus { border-color: var(--hr); }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+        .btn-cancel { padding: 8px 18px; border-radius: 7px; background: var(--bg); border: 1px solid var(--border); font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700; color: var(--txt2); cursor: pointer; }
+        .btn-cancel:hover { border-color: var(--txt2); }
+        .btn-confirm-reject { padding: 8px 18px; border-radius: 7px; background: var(--err); border: none; font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700; color: #fff; cursor: pointer; }
+        .btn-confirm-reject:hover { background: #dc2626; }
+
+        /* ══ EMPTY STATE ══ */
+        .empty-state { text-align: center; padding: 40px; color: var(--txt2); }
+        .empty-state i { font-size: 40px; margin-bottom: 12px; opacity: .3; }
+        .empty-state p { font-size: 13px; font-weight: 600; }
+    </style>
+
+    <!-- ── HR Banner ── -->
+    <div class="hr-banner">
+        <div class="hb-left">
+            <h2><i class="fa-solid fa-shield-halved" style="margin-right:8px;opacity:.8"></i>HR Dashboard</h2>
+            <p>Quản lý toàn bộ hệ thống nhân sự — xem và xử lý dữ liệu mọi phòng ban</p>
+            <div class="hb-date" id="dateTime">...</div>
+        </div>
+        <!-- TODO: replace với API /api/hr/stats -->
+        <div class="hb-right">
+            <div class="hb-pill">
+                <div class="num" id="bannerTotalNV">—</div>
+                <div class="lbl">Tổng NV</div>
+            </div>
+            <div class="hb-pill">
+                <div class="num" id="bannerTotalDept" style="color:#c4b5fd">—</div>
+                <div class="lbl">Phòng ban</div>
+            </div>
+            <div class="hb-pill">
+                <div class="num" id="bannerPendingLeave" style="color:#fcd34d">—</div>
+                <div class="lbl">Đơn chờ HR</div>
+            </div>
+            <div class="hb-pill">
+                <div class="num" id="bannerAttendance" style="color:#6ee7b7">—</div>
+                <div class="lbl">Chuyên cần</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HR sub-navigation (DRY via fragment) -->
+    <th:block th:replace="~{fragments/hr-subnav :: subnav}"></th:block>
+
+    <!-- ── KPI Cards ── -->
+    <!-- TODO: replace với API /api/hr/stats -->
+    <div class="g4" id="kpiGrid">
+        <div class="kpi-card">
+            <div class="kpi-icon" style="background:var(--warn-s);color:var(--warn)"><i class="fa-solid fa-file-circle-exclamation"></i></div>
+            <div>
+                <div class="kpi-lbl">Đơn phép chờ HR duyệt</div>
+                <div class="kpi-val" id="kpiPendingLeave">—</div>
+                <div class="kpi-sub"><span class="badge" style="background:var(--err-s);color:var(--err)">Cần xử lý</span></div>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon" style="background:var(--err-s);color:var(--err)"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            <div>
+                <div class="kpi-lbl">Chấm công thiếu dữ liệu</div>
+                <div class="kpi-val" id="kpiMissingAttendance">—</div>
+                <div class="kpi-sub"><span class="badge" style="background:var(--warn-s);color:var(--warn)" id="kpiAttendanceMonth">tháng này</span></div>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon" style="background:var(--inf-s);color:var(--inf)"><i class="fa-solid fa-money-bill-wave"></i></div>
+            <div>
+                <div class="kpi-lbl">Lương chưa chốt</div>
+                <div class="kpi-val" id="kpiUnconfirmedSalary">—</div>
+                <div class="kpi-sub"><span class="badge" style="background:var(--inf-s);color:var(--inf)">nhân viên</span></div>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon" style="background:var(--hr-s);color:var(--hr)"><i class="fa-solid fa-file-user"></i></div>
+            <div>
+                <div class="kpi-lbl">CV ứng viên chờ duyệt</div>
+                <div class="kpi-val" id="kpiPendingCV">—</div>
+                <div class="kpi-sub"><span class="badge" style="background:var(--hr-s);color:var(--hr)">tuyển dụng</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Widget Hỗ trợ: Quản lý Nhân sự (HR CRUD) ── -->
+    <div class="card hr-section" data-tab="employees organization" id="hrEmployeesSection" style="margin-bottom:24px">
+        <div class="card-hd" style="margin-bottom:12px">
+            <div class="card-title"><i class="fa-solid fa-users" style="color:var(--hr);margin-right:6px"></i>Quản lý nhân viên</div>
+            <button class="btn-confirm" style="background:var(--hr);color:#fff;padding:8px 12px;font-size:12px;border-radius:8px;" onclick="openEmployeeModal('new')">+ Thêm NV</button>
+        </div>
+        <table class="rank-table" style="width:100%;">
+            <thead>
+            <tr>
+                <th style="width:20px">#</th>
+                <th>ID</th>
+                <th>Họ tên</th>
+                <th>Phòng ban</th>
+                <th>Chức vụ</th>
+                <th>Trạng thái</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody id="hrEmployeeBody">
+            <tr>
+                <td colspan="7">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-spinner fa-spin"></i>
+                        <p>Đang tải dữ liệu nhân sự...</p>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ── Widget 3: Thanh toán lương (HR) ── -->
+    <div class="card hr-section" data-tab="payroll" id="hrPayrollSection" style="margin-bottom:24px">
+        <div class="card-hd" style="margin-bottom:12px">
+            <div class="card-title"><i class="fa-solid fa-file-invoice-dollar" style="color:var(--inf);margin-right:6px"></i>Phê duyệt lương</div>
+            <button class="btn-confirm" style="background:var(--inf);color:#fff;padding:8px 12px;font-size:12px;border-radius:8px;" onclick="loadHrPayslips()">Tải lại</button>
+        </div>
+        <table class="rank-table" style="width:100%;">
+            <thead>
+            <tr>
+                <th style="width:20px">#</th>
+                <th>ID</th>
+                <th>Nhân viên</th>
+                <th>Tháng</th>
+                <th>Tổng</th>
+                <th>Trạng thái</th>
+                <th>Hành động</th>
+            </tr>
+            </thead>
+            <tbody id="hrPayslipBody">
+            <tr>
+                <td colspan="7">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-spinner fa-spin"></i>
+                        <p>Đang tải phiếu lương...</p>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ── Row 2: To-do List | Donut Chart ── -->
+    <div class="g2 hr-section" data-tab="attendance recruitment dashboard" id="hrInsightsSection">
+
+        <!-- Widget 1: To-do List — số đếm load từ JS -->
+        <div class="card">
+            <div class="card-hd">
+                <div class="card-title"><i class="fa-solid fa-list-check" style="color:var(--hr);margin-right:6px"></i>Việc cần xử lý hôm nay</div>
+                <span style="font-size:11px;color:var(--txt2);font-weight:600" id="todayLabel">...</span>
+            </div>
+            <div class="todo-list">
+                <a class="todo-item urgent" href="#">
+                    <div class="todo-icon" style="background:var(--err-s);color:var(--err)"><i class="fa-solid fa-calendar-xmark"></i></div>
+                    <div class="todo-content">
+                        <div class="todo-title">Đơn phép chờ HR duyệt</div>
+                        <div class="todo-desc" id="todoLeaveDesc">Đang tải...</div>
+                    </div>
+                    <div class="todo-count" style="color:var(--err)" id="todoLeaveCount">—</div>
+                    <div class="todo-arrow"><i class="fa-solid fa-chevron-right"></i></div>
+                </a>
+                <a class="todo-item warn" href="#">
+                    <div class="todo-icon" style="background:var(--warn-s);color:var(--warn)"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                    <div class="todo-content">
+                        <div class="todo-title">Chấm công thiếu dữ liệu</div>
+                        <div class="todo-desc" id="todoAttendanceDesc">Đang tải...</div>
+                    </div>
+                    <div class="todo-count" style="color:var(--warn)" id="todoAttendanceCount">—</div>
+                    <div class="todo-arrow"><i class="fa-solid fa-chevron-right"></i></div>
+                </a>
+                <a class="todo-item info" href="#">
+                    <div class="todo-icon" style="background:var(--inf-s);color:var(--inf)"><i class="fa-solid fa-money-check-dollar"></i></div>
+                    <div class="todo-content">
+                        <div class="todo-title">Lương tháng này chưa chốt</div>
+                        <div class="todo-desc" id="todoSalaryDesc">Đang tải...</div>
+                    </div>
+                    <div class="todo-count" style="color:var(--inf)" id="todoSalaryCount">—</div>
+                    <div class="todo-arrow"><i class="fa-solid fa-chevron-right"></i></div>
+                </a>
+                <a class="todo-item ok" href="#">
+                    <div class="todo-icon" style="background:var(--hr-s);color:var(--hr)"><i class="fa-solid fa-file-user"></i></div>
+                    <div class="todo-content">
+                        <div class="todo-title">CV ứng viên chờ sàng lọc</div>
+                        <div class="todo-desc" id="todoCVDesc">Đang tải...</div>
+                    </div>
+                    <div class="todo-count" style="color:var(--hr)" id="todoCVCount">—</div>
+                    <div class="todo-arrow"><i class="fa-solid fa-chevron-right"></i></div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Widget 2: Donut Chart chuyên cần -->
+        <div class="card">
+            <div class="card-hd">
+                <div class="card-title"><i class="fa-solid fa-chart-pie" style="color:var(--ok);margin-right:6px"></i>Tỉ lệ chuyên cần toàn công ty</div>
+            </div>
+            <div class="filter-row">
+                <label>Tháng:</label>
+                <!-- TODO: load options tháng động từ API /api/hr/attendance/months -->
+                <select class="filter-select" id="donutFilter" onchange="loadDonutData()">
+                    <option value="">-- Chọn tháng --</option>
+                </select>
+            </div>
+            <div class="donut-wrap">
+                <canvas id="donutChart" style="max-width:200px;max-height:200px"></canvas>
+                <div class="donut-center">
+                    <div class="big" id="donutCenter">—</div>
+                    <div class="sm">có mặt</div>
+                </div>
+            </div>
+            <!-- TODO: replace legend values từ API /api/hr/attendance/summary?month=X -->
+            <div class="donut-legend" id="donutLegend">
+                <div class="legend-item">
+                    <div class="legend-dot" style="background:var(--ok)"></div>
+                    <span style="color:var(--txt2)">Có mặt đúng giờ</span>
+                    <span class="legend-val" id="legendOnTime">—</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background:var(--warn)"></div>
+                    <span style="color:var(--txt2)">Đi muộn</span>
+                    <span class="legend-val" id="legendLate">—</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background:var(--inf)"></div>
+                    <span style="color:var(--txt2)">Nghỉ có phép</span>
+                    <span class="legend-val" id="legendPermitted">—</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background:var(--err)"></div>
+                    <span style="color:var(--txt2)">Vắng không phép</span>
+                    <span class="legend-val" id="legendAbsent">—</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Widget 3: Top 5 NV đi muộn nhất ── -->
+    <div class="card hr-section" data-tab="attendance" id="hrLateSection" style="margin-bottom:24px">
+        <div class="card-hd">
+            <div class="card-title"><i class="fa-solid fa-ranking-star" style="color:var(--warn);margin-right:6px"></i>Top 5 nhân viên đi muộn nhất tháng này</div>
+            <div class="filter-row" style="margin-bottom:0">
+                <label>Tháng:</label>
+                <!-- TODO: load options từ API -->
+                <select class="filter-select" id="lateFilter" onchange="loadLateTable()">
+                    <option value="">-- Chọn tháng --</option>
+                </select>
+            </div>
+        </div>
+        <!-- TODO: replace tbody với API /api/hr/attendance/top-late?month=X&limit=5 -->
+        <table class="rank-table">
+            <thead>
+            <tr>
+                <th style="width:40px">Rank</th>
+                <th>Nhân viên</th>
+                <th>Phòng ban</th>
+                <th>Số lần muộn</th>
+                <th>Tổng phút muộn</th>
+                <th>Tiền phạt</th>
+                <th>Mức độ</th>
+            </tr>
+            </thead>
+            <tbody id="lateTableBody">
+            <tr>
+                <td colspan="7">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-spinner fa-spin"></i>
+                        <p>Đang tải dữ liệu...</p>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ── Widget 4: Đơn phép chờ HR duyệt ── -->
+    <div class="card hr-section" data-tab="leaves" id="hrLeavesSection" style="margin-bottom:24px">
+        <div class="card-hd">
+            <div class="card-title">
+                <i class="fa-solid fa-file-circle-exclamation" style="color:var(--hr);margin-right:6px"></i>
+                Đơn phép chờ HR duyệt (cấp 2)
+                <span id="pendingLeaveBadge" style="background:var(--err);color:#fff;font-size:10px;padding:1px 7px;border-radius:20px;margin-left:6px">—</span>
+            </div>
+            <a class="card-link" href="#">Xem tất cả</a>
+        </div>
+        <!-- TODO: replace tbody với API /api/hr/leaves/pending -->
+        <table class="leave-table">
+            <thead>
+            <tr>
+                <th>Nhân viên</th>
+                <th>Phòng ban</th>
+                <th>Loại phép</th>
+                <th>Thời gian</th>
+                <th>Ngày nộp</th>
+                <th>Dept Head</th>
+                <th>Thao tác HR</th>
+            </tr>
+            </thead>
+            <tbody id="hrLeaveBody">
+            <tr>
+                <td colspan="7">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-spinner fa-spin"></i>
+                        <p>Đang tải đơn phép...</p>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+        <div id="emptyHrLeave" style="display:none;text-align:center;padding:32px 0;color:var(--txt2)">
+            <i class="fa-solid fa-circle-check" style="font-size:32px;color:var(--ok);margin-bottom:10px;display:block"></i>
+            <div style="font-weight:700;font-size:14px">Không còn đơn nào chờ duyệt</div>
+            <div style="font-size:13px;margin-top:4px">Tất cả đơn phép đã được HR xử lý</div>
+        </div>
+    </div>
+
+    <!-- ═══ MODAL QUẢN LÝ NHÂN SỰ ═══ -->
+    <div class="modal-overlay" id="employeeModal">
+        <div class="modal-box">
+            <div class="modal-title"><i class="fa-solid fa-user-plus" style="color:var(--hr);margin-right:7px"></i><span id="employeeModalTitle">Thêm nhân viên</span></div>
+            <div class="modal-sub" id="employeeModalSub">Nhập thông tin và lưu</div>
+            <input id="emp-id" class="modal-textarea" placeholder="ID" style="margin-bottom:10px" />
+            <input id="emp-name" class="modal-textarea" placeholder="Họ và tên" style="margin-bottom:10px" />
+            <input id="emp-phone" class="modal-textarea" placeholder="Số điện thoại" style="margin-bottom:10px" />
+            <input id="emp-email" class="modal-textarea" placeholder="Email công việc" style="margin-bottom:10px" />
+            <input id="emp-status" class="modal-textarea" placeholder="Trạng thái (DANG_LAM_VIEC/NGHI_VIEC)" style="margin-bottom:10px" />
+            <input id="emp-leave" class="modal-textarea" placeholder="Số phép còn lại" style="margin-bottom:10px" />
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeEmployeeModal()">Hủy</button>
+                <button class="btn-confirm-reject" onclick="saveEmployee()"><i class="fa-solid fa-save"></i> Lưu</button>
+            </div>
+        </div>
+    </div>
+
+</th:block>
+
+<!-- ═══ MODAL TỪ CHỐI ═══ -->
+<div class="modal-overlay" id="rejectModal">
+    <div class="modal-box">
+        <div class="modal-title"><i class="fa-solid fa-xmark-circle" style="color:var(--err);margin-right:7px"></i>Từ chối đơn phép (HR)</div>
+        <div class="modal-sub" id="rejectSub">Nhập lý do từ chối</div>
+        <label class="modal-label">Lý do từ chối <span style="color:var(--err)">*</span></label>
+        <textarea class="modal-textarea" id="rejectReason" placeholder="Ví dụ: Quỹ phép đã hết, đề nghị nhân viên xem lại..."></textarea>
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="closeRejectModal()">Hủy</button>
+            <button class="btn-confirm-reject" onclick="confirmReject()"><i class="fa-solid fa-xmark"></i> Xác nhận từ chối</button>
+        </div>
+    </div>
+</div>
+
+<script th:fragment="custom-scripts">
+    /* ── DateTime ── */
+    function tick() {
+        const d = new Date();
+        const days = ['Chủ nhật','Thứ hai','Thứ ba','Thứ tư','Thứ năm','Thứ sáu','Thứ bảy'];
+        const str = days[d.getDay()] + ', ' +
+            String(d.getDate()).padStart(2,'0') + '/' +
+            String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear() +
+            ' — ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+        document.getElementById('dateTime').textContent = str;
+
+        // Label "hôm nay" cho todo widget
+        document.getElementById('todayLabel').textContent =
+            days[d.getDay()] + ', ' +
+            String(d.getDate()).padStart(2,'0') + '/' +
+            String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
+    }
+    tick(); setInterval(tick, 1000);
+
+    /* ── Hiển thị theo tab con HR (/dashboard/hr/{subPage}) ── */
+    function activateHrSubPage() {
+        const parts = window.location.pathname.split('/').filter(Boolean);
+        const subPage = parts.length >= 3 ? (parts[2] || '').toLowerCase() : '';
+        const sections = document.querySelectorAll('.hr-section');
+        if (!subPage) {
+            sections.forEach(el => el.style.display = '');
+            return;
+        }
+        sections.forEach(el => {
+            const tabs = (el.dataset.tab || '').toLowerCase().split(/\s+/).filter(Boolean);
+            const visible = tabs.includes(subPage);
+            el.style.display = visible ? '' : 'none';
+        });
+    }
+    activateHrSubPage();
+
+    /* ── Helper: API fetch với auth ── */
+    async function apiFetch(url, options = {}) {
+        const defaultOptions = {
+            headers: getAuthHeaders(),
+            ...options
+        };
+        const response = await fetch(url, defaultOptions);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response;
+    }
+
+    async function apiFetchJson(url, options = {}) {
+        const response = await apiFetch(url, options);
+        return response.json();
+    }
+
+    /* ── 1. Load Stats tổng (banner + KPI cards) ── */
+    async function loadStats() {
+        try {
+            const data = await apiFetchJson('/api/dashboard/hr/stats');
+            updateStats({
+                totalNV: data.totalEmployees,
+                totalDept: data.totalDepartments,
+                pendingLeave: data.pendingLeaves,
+                missingAttendance: data.missingAttendance,
+                unconfirmedSalary: data.unconfirmedSalary,
+                attendancePct: 100 - (data.missingAttendance || 0),
+                pendingCV: 0
+            });
+        } catch(e) {
+            console.error('loadStats error:', e);
+        }
+    }
+
+    function updateStats(data) {
+        // Banner pills
+        document.getElementById('bannerTotalNV').textContent      = data.totalNV        ?? '—';
+        document.getElementById('bannerTotalDept').textContent    = data.totalDept      ?? '—';
+        document.getElementById('bannerPendingLeave').textContent = data.pendingLeave   ?? '—';
+        document.getElementById('bannerAttendance').textContent   = (data.attendancePct ?? '—') + '%';
+
+        // KPI cards
+        document.getElementById('kpiPendingLeave').textContent       = data.pendingLeave       ?? '—';
+        document.getElementById('kpiMissingAttendance').textContent  = data.missingAttendance  ?? '—';
+        document.getElementById('kpiUnconfirmedSalary').textContent  = data.unconfirmedSalary  ?? '—';
+        document.getElementById('kpiPendingCV').textContent          = data.pendingCV          ?? '—';
+
+        // Todo list counts + descriptions
+        document.getElementById('todoLeaveCount').textContent      = data.pendingLeave      ?? '—';
+        document.getElementById('todoAttendanceCount').textContent = data.missingAttendance ?? '—';
+        document.getElementById('todoSalaryCount').textContent     = data.unconfirmedSalary ?? '—';
+        document.getElementById('todoCVCount').textContent         = data.pendingCV         ?? '—';
+
+        const m = new Date().getMonth() + 1;
+        document.getElementById('todoLeaveDesc').textContent      = `${data.pendingLeave ?? '—'} đơn đang chờ xác nhận từ HR`;
+        document.getElementById('todoAttendanceDesc').textContent = `${data.missingAttendance ?? '—'} bản ghi chưa có dữ liệu check-in/out`;
+        document.getElementById('todoSalaryDesc').textContent     = `${data.unconfirmedSalary ?? '—'} nhân viên chưa có phiếu lương tháng ${m}/` + new Date().getFullYear();
+        document.getElementById('todoCVDesc').textContent         = `${data.pendingCV ?? '—'} hồ sơ mới chờ sàng lọc`;
+
+        // Badge pending leave
+        document.getElementById('pendingLeaveBadge').textContent = data.pendingLeave ?? '—';
+    }
+
+    /* ── 2. Load Donut Chart ── */
+    let donutChartInstance = null;
+
+    async function initDonutMonths() {
+
+        const sel = document.getElementById('donutFilter');
+        const now = new Date();
+        for (let i = 0; i < 4; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+            const lbl = `Tháng ${d.getMonth()+1}/${d.getFullYear()}`;
+            const opt = new Option(lbl, val);
+            sel.appendChild(opt);
+        }
+        sel.selectedIndex = 1; // chọn tháng hiện tại
+        loadDonutData();
+    }
+
+    async function loadDonutData() {
+        const month = document.getElementById('donutFilter').value;
+        if (!month) return;
+        try {
+            const data = await apiFetchJson(`/api/dashboard/hr/attendance/summary?month=${month}`);
+            renderDonut(data);
+        } catch(e) {
+            console.error('loadDonutData error:', e);
+            document.getElementById('donutLegend').innerHTML = `<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i><p>Không thể tải dữ liệu</p></div>`;
+        }
+    }
+
+    function renderDonut(data) {
+        const ctx = document.getElementById('donutChart').getContext('2d');
+        const vals = [data.presentPct, data.latePct, data.permittedPct, data.absentPct];
+        const total = (data.presentPct ?? 0) + (data.latePct ?? 0);
+        document.getElementById('donutCenter').textContent = total + '%';
+
+        document.getElementById('legendOnTime').textContent    = (data.presentPct   ?? '—') + '%';
+        document.getElementById('legendLate').textContent      = (data.latePct      ?? '—') + '%';
+        document.getElementById('legendPermitted').textContent = (data.permittedPct ?? '—') + '%';
+        document.getElementById('legendAbsent').textContent    = (data.absentPct    ?? '—') + '%';
+
+        if (donutChartInstance) donutChartInstance.destroy();
+        donutChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Có mặt đúng giờ','Đi muộn','Nghỉ có phép','Vắng không phép'],
+                datasets: [{
+                    data: vals,
+                    backgroundColor: ['#10B981','#F59E0B','#3B82F6','#EF4444'],
+                    borderWidth: 0, hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true, cutout: '70%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw}%` } }
+                }
+            }
+        });
+    }
+
+    /* ── 3. Load Top 5 Đi Muộn ── */
+    async function initLateMonths() {
+        // TODO: load options tháng (tương tự donutFilter)
+        const sel = document.getElementById('lateFilter');
+        const now = new Date();
+        for (let i = 0; i < 4; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+            const lbl = `Tháng ${d.getMonth()+1}/${d.getFullYear()}`;
+            const opt = new Option(lbl, val);
+            sel.appendChild(opt);
+        }
+        sel.selectedIndex = 1;
+        loadLateTable();
+    }
+
+    async function loadLateTable() {
+        const month = document.getElementById('lateFilter').value;
+        if (!month) return;
+        const tbody = document.getElementById('lateTableBody');
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>Đang tải...</p></div></td></tr>`;
+        try {
+            const data = await apiFetchJson(`/api/dashboard/hr/attendance/top-late?month=${month}&limit=5`);
+            renderLateTable(data);
+        } catch(e) {
+            console.error('loadLateTable error:', e);
+            tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-triangle-exclamation" style="color:var(--err);opacity:.5"></i><p>Lỗi tải dữ liệu</p></div></td></tr>`;
+        }
+    }
+
+    function renderLateTable(list) {
+        const rankClass = ['rank-1','rank-2','rank-3','rank-n','rank-n'];
+        const tbody = document.getElementById('lateTableBody');
+        if (!list || list.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-circle-check" style="color:var(--ok);opacity:.5"></i><p>Không có NV đi muộn tháng này</p></div></td></tr>`;
+            return;
+        }
+        const maxLate = list[0]?.soLanMuon || 1;
+        tbody.innerHTML = list.map((nv, i) => {
+            const initials = (nv.tenNV || '??').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+            const colors = ['var(--err-s)/var(--err)','var(--warn-s)/var(--warn)','var(--inf-s)/var(--inf)','var(--teal-s)/var(--teal)','var(--hr-s)/var(--hr)'];
+            const [bg, clr] = (colors[i] || 'var(--bg)/var(--txt2)').split('/');
+            const pct = Math.round((nv.soLanMuon / maxLate) * 100);
+            const fmtMoney = (n) => n ? n.toLocaleString('vi-VN') + 'đ' : '—';
+            return `
+            <tr>
+                <td><div class="rank-num ${rankClass[i]}">${i+1}</div></td>
+                <td><div class="emp-cell">
+                    <div class="emp-av" style="background:${bg};color:${clr}">${initials}</div>
+                    <div><div class="emp-name">${nv.tenNV}</div><div class="emp-dept">${nv.chucVu || ''}</div></div>
+                </div></td>
+                <td><span class="dept-tag">${nv.tenPhong || '—'}</span></td>
+                <td><strong style="color:${i===0?'var(--err)':'var(--warn)'}">${nv.soLanMuon}</strong> lần</td>
+                <td>${nv.tongPhutMuon ?? '—'} phút</td>
+                <td style="color:var(--err);font-weight:700">${fmtMoney(nv.tienPhat)}</td>
+                <td><div class="late-bar-wrap"><div class="late-bar" style="width:${pct}%"></div></div></td>
+            </tr>`;
+        }).join('');
+    }
+
+    /* ── 4. Load Đơn Phép Chờ HR ── */
+    let hrPendingCount = 0;
+    let hrLeaveMap = {}; // map id -> tên NV để dùng khi approve/reject
+
+    async function loadLeaveTable() {
+        const tbody = document.getElementById('hrLeaveBody');
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>Đang tải đơn phép...</p></div></td></tr>`;
+        try {
+            const data = await apiFetchJson('/api/dashboard/hr/leaves/pending');
+            renderLeaveTable(data);
+        } catch(e) {
+            console.error('loadLeaveTable error:', e);
+            tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-triangle-exclamation" style="color:var(--err);opacity:.5"></i><p>Lỗi tải dữ liệu</p></div></td></tr>`;
+        }
+    }
+
+    function renderLeaveTable(list) {
+        const tbody = document.getElementById('hrLeaveBody');
+        hrPendingCount = list.length;
+        document.getElementById('pendingLeaveBadge').textContent = hrPendingCount;
+
+        if (hrPendingCount === 0) {
+            tbody.innerHTML = '';
+            document.getElementById('emptyHrLeave').style.display = 'block';
+            return;
+        }
+
+        hrLeaveMap = {};
+        list.forEach(d => { hrLeaveMap[d.id] = d.tenNV; });
+
+        const leaveColors = {
+            'PHEP_NAM': 'var(--inf-s)/var(--inf)/Phép năm',
+            'PHEP_OM':  'var(--err-s)/var(--err)/Phép ốm',
+            'NGHI_LE':  'var(--ok-s)/var(--ok)/Nghỉ lễ',
+        };
+
+        tbody.innerHTML = list.map(d => {
+            const initials = (d.tenNV || '??').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+            const [lbg, lclr, llbl] = (leaveColors[d.loaiPhep] || 'var(--hr-s)/var(--hr)/Khác').split('/');
+            const deptApproved = d.deptHeadStatus === 'APPROVED';
+            return `
+            <tr id="hr-row-${d.id}">
+                <td><div class="emp-cell">
+                    <div class="emp-av" style="background:var(--ok-s);color:var(--ok)">${initials}</div>
+                    <div><div class="emp-name">${d.tenNV}</div><div class="emp-dept">${d.chucVu || ''}</div></div>
+                </div></td>
+                <td><span class="dept-tag">${d.tenPhong || '—'}</span></td>
+                <td><span class="leave-type-badge" style="background:${lbg};color:${lclr}">${llbl}</span></td>
+                <td style="font-size:12px;color:var(--txt2)">${d.tuNgay} → ${d.denNgay}<br><strong style="color:var(--txt)">${d.soNgay} ngày</strong></td>
+                <td style="font-size:12px;color:var(--txt2)">${d.ngayNop}</td>
+                <td>
+                    <div class="approval-step">
+                        <div class="step">
+                            <div class="dot" style="background:${deptApproved ? 'var(--ok)' : 'var(--txt2)'}"></div>
+                            <span style="color:${deptApproved ? 'var(--ok)' : 'var(--txt2)'}">Dept Head: ${deptApproved ? 'Đã duyệt' : 'Chưa duyệt'}</span>
+                        </div>
+                        <div class="step">
+                            <div class="dot" style="background:var(--warn)"></div>
+                            <span style="color:var(--warn)">HR: Chờ duyệt</span>
+                        </div>
+                    </div>
+                </td>
+                <td><div style="display:flex;gap:6px">
+                    <button class="qa-approve" onclick="hrApprove(${d.id})"><i class="fa-solid fa-check"></i> Duyệt</button>
+                    <button class="qa-reject"  onclick="openRejectModal(${d.id})"><i class="fa-solid fa-xmark"></i> Từ chối</button>
+                </div></td>
+            </tr>`;
+        }).join('');
+    }
+
+    /* ── HR Approve ── */
+    async function hrApprove(id) {
+        const name = hrLeaveMap[id] || 'NV';
+        try {
+            await apiFetch(`/api/dashboard/hr/leaves/${id}/approve`, { method: 'PUT' });
+            const row = document.getElementById('hr-row-' + id);
+            if (row) {
+                row.querySelector('td:last-child').innerHTML = '<span class="st-badge st-ok"><i class="fa-solid fa-check"></i> HR đã duyệt</span>';
+                setTimeout(() => {
+                    row.style.transition = 'opacity .4s'; row.style.opacity = '0';
+                    setTimeout(() => { row.remove(); hrPendingCount--; checkEmpty(); }, 400);
+                }, 1200);
+            }
+            toast('Đã duyệt đơn phép của ' + name, 'success');
+        } catch (e) {
+            console.error('hrApprove error:', e);
+            toast('Lỗi khi duyệt đơn — thử lại sau', 'warning');
+        }
+    }
+
+    /* ── HR Reject Modal ── */
+    let rejectTargetId = null;
+    function openRejectModal(id) {
+        rejectTargetId = id;
+        const name = hrLeaveMap[id] || 'NV';
+        document.getElementById('rejectSub').innerHTML = `Nhập lý do từ chối đơn phép của <strong>${name}</strong>`;
+        document.getElementById('rejectReason').value = '';
+        document.getElementById('rejectModal').classList.add('show');
+    }
+    function closeRejectModal() {
+        document.getElementById('rejectModal').classList.remove('show');
+        rejectTargetId = null;
+    }
+    async function confirmReject() {
+        const reason = document.getElementById('rejectReason').value.trim();
+        if (!reason) {
+            document.getElementById('rejectReason').style.borderColor = 'var(--err)';
+            setTimeout(() => document.getElementById('rejectReason').style.borderColor = '', 1500);
+            return;
+        }
+        const id = rejectTargetId;
+        const name = hrLeaveMap[id] || 'NV';
+        try {
+            await apiFetch(`/api/dashboard/hr/leaves/${id}/reject`, {
+                method: 'PUT',
+                body: JSON.stringify({ reason })
+            });
+            const row = document.getElementById('hr-row-' + id);
+            if (row) {
+                row.querySelector('td:last-child').innerHTML = '<span class="st-badge st-err"><i class="fa-solid fa-xmark"></i> HR từ chối</span>';
+                setTimeout(() => {
+                    row.style.transition = 'opacity .4s'; row.style.opacity = '0';
+                    setTimeout(() => { row.remove(); hrPendingCount--; checkEmpty(); }, 400);
+                }, 1200);
+            }
+            toast('Đã từ chối đơn phép của ' + name, 'warning');
+            closeRejectModal();
+        } catch (e) {
+            console.error('confirmReject error:', e);
+            toast('Lỗi khi từ chối — thử lại sau', 'warning');
+        }
+    }
+
+    function checkEmpty() {
+        if (hrPendingCount <= 0)
+            document.getElementById('emptyHrLeave').style.display = 'block';
+        document.getElementById('pendingLeaveBadge').textContent = Math.max(0, hrPendingCount);
+    }
+
+    /* ── HR Employee CRUD ── */
+    let hrEmployees = [];
+    let hrEmployeeMode = 'new';
+
+    async function loadHrEmployees() {
+        const tbody = document.getElementById('hrEmployeeBody');
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>Đang tải nhân sự...</p></div></td></tr>`;
+        try {
+            hrEmployees = await apiFetchJson('/api/dashboard/hr/employees');
+            renderHrEmployees(hrEmployees);
+        } catch (e) {
+            console.error('loadHrEmployees error:', e);
+            tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-triangle-exclamation" style="color:var(--err);opacity:.5"></i><p>Lỗi tải dữ liệu nhân sự</p></div></td></tr>`;
+        }
+    }
+
+    function renderHrEmployees(list) {
+        const tbody = document.getElementById('hrEmployeeBody');
+        if (!list || list.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-circle-check" style="color:var(--ok);opacity:.5"></i><p>Chưa có nhân viên đăng ký</p></div></td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = list.map((nv, i) => {
+            return `
+            <tr>
+                <td>${i+1}</td>
+                <td>${nv.id || '—'}</td>
+                <td>${nv.hoTen || '—'}</td>
+                <td>${nv.phongBan?.tenPhongBan || nv.tenPhong || '—'}</td>
+                <td>${nv.chucVu?.tenChucVu || nv.chucVu || '—'}</td>
+                <td>${nv.trangThaiHoatDong || '—'}</td>
+                <td>
+                    <button class="qa-approve" style="font-size:11px;padding:4px 8px;" onclick="openEmployeeModal('edit', '${nv.id}')">Sửa</button>
+                    <button class="qa-reject" style="font-size:11px;padding:4px 8px;" onclick="deleteEmployee('${nv.id}')">Xóa</button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    function openEmployeeModal(mode, id) {
+        hrEmployeeMode = mode;
+        const modal = document.getElementById('employeeModal');
+        const title = document.getElementById('employeeModalTitle');
+        const sub = document.getElementById('employeeModalSub');
+        const idField = document.getElementById('emp-id');
+        const nameField = document.getElementById('emp-name');
+        const phoneField = document.getElementById('emp-phone');
+        const emailField = document.getElementById('emp-email');
+        const statField = document.getElementById('emp-status');
+        const leaveField = document.getElementById('emp-leave');
+
+        if (mode === 'edit') {
+            const nv = hrEmployees.find(x => x.id === id);
+            if (!nv) return;
+            title.textContent = 'Cập nhật nhân viên';
+            sub.textContent = `Sửa thông tin: ${nv.hoTen || nv.id}`;
+            idField.value = nv.id || '';
+            idField.disabled = true;
+            nameField.value = nv.hoTen || '';
+            phoneField.value = nv.soDienThoai || '';
+            emailField.value = nv.emailCongViec || '';
+            statField.value = nv.trangThaiHoatDong || '';
+            leaveField.value = nv.soNgayPhepConLai != null ? nv.soNgayPhepConLai : '';
+        } else {
+            title.textContent = 'Thêm nhân viên';
+            sub.textContent = 'Nhập thông tin và lưu';
+            idField.disabled = false;
+            idField.value = '';
+            nameField.value = '';
+            phoneField.value = '';
+            emailField.value = '';
+            statField.value = 'DANG_LAM_VIEC';
+            leaveField.value = '12';
+        }
+
+        modal.classList.add('show');
+    }
+
+    function closeEmployeeModal() {
+        document.getElementById('employeeModal').classList.remove('show');
+    }
+
+    async function saveEmployee() {
+        const id = document.getElementById('emp-id').value.trim();
+        const hoTen = document.getElementById('emp-name').value.trim();
+        const soDienThoai = document.getElementById('emp-phone').value.trim();
+        const emailCongViec = document.getElementById('emp-email').value.trim();
+        const trangThaiHoatDong = document.getElementById('emp-status').value.trim() || 'DANG_LAM_VIEC';
+        const soNgayPhepConLai = Number(document.getElementById('emp-leave').value.trim() || '12');
+
+        if (!id || !hoTen) {
+            toast('ID và Họ tên là bắt buộc', 'warning');
+            return;
+        }
+
+        const payload = { id, hoTen, soDienThoai, emailCongViec, trangThaiHoatDong, soNgayPhepConLai };
+
+        try {
+            const url = hrEmployeeMode === 'edit' ? `/api/dashboard/hr/employees/${encodeURIComponent(id)}` : '/api/dashboard/hr/employees';
+            const method = hrEmployeeMode === 'edit' ? 'PUT' : 'POST';
+            await apiFetch(url, { method, body: JSON.stringify(payload) });
+            await loadHrEmployees();
+            toast('Lưu nhân viên thành công', 'success');
+            closeEmployeeModal();
+        } catch (e) {
+            console.error('saveEmployee error:', e);
+            toast('Lưu nhân viên thất bại: ' + (e.message || ''), 'warning');
+        }
+    }
+
+    async function deleteEmployee(id) {
+        if (!confirm('Xác nhận xóa nhân viên ' + id + ' ?')) return;
+        try {
+            await apiFetch(`/api/dashboard/hr/employees/${encodeURIComponent(id)}`, { method: 'DELETE' });
+            await loadHrEmployees();
+            toast('Xóa nhân viên thành công', 'success');
+        } catch (e) {
+            console.error('deleteEmployee error:', e);
+            toast('Xóa nhân viên lỗi', 'warning');
+        }
+    }
+
+    async function loadHrPayslips() {
+        const tbody = document.getElementById('hrPayslipBody');
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>Đang tải phiếu lương...</p></div></td></tr>`;
+        try {
+            const data = await apiFetchJson('/api/dashboard/hr/payslips');
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-circle-check" style="color:var(--ok);opacity:.5"></i><p>Không có phiếu lương</p></div></td></tr>`;
+                return;
+            }
+            tbody.innerHTML = data.map((p, i) => `
+            <tr>
+                <td>${i+1}</td>
+                <td>${p.id || '—'}</td>
+                <td>${p.nhanVien?.hoTen || p.tenNV || '—'}</td>
+                <td>${p.thangNam || '—'}</td>
+                <td>${p.tongLuong != null ? p.tongLuong.toLocaleString('vi-VN') + 'đ' : '—'}</td>
+                <td>${p.trangThaiThanhToan || '—'}</td>
+                <td>
+                    ${p.trangThaiThanhToan === 'CHUA_THANH_TOAN' ? `<button class="qa-approve" style="font-size:11px;padding:4px 8px;" onclick="confirmPayslip('${p.id}')">Xác nhận</button>` : '<span style="font-size:11px;color:var(--ok)">Đã chốt</span>'}
+                </td>
+            </tr>`).join('');
+        } catch (e) {
+            console.error('loadHrPayslips error:', e);
+            tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-triangle-exclamation" style="color:var(--err);opacity:.5"></i><p>Lỗi tải phiếu lương</p></div></td></tr>`;
+        }
+    }
+
+    async function confirmPayslip(id) {
+        try {
+            await apiFetch(`/api/dashboard/hr/payslips/${encodeURIComponent(id)}/confirm`, { method: 'PUT' });
+            await loadHrPayslips();
+            toast('Xác nhận phiếu lương thành công', 'success');
+        } catch (e) {
+            console.error('confirmPayslip error:', e);
+            toast('Xác nhận phiếu lương lỗi', 'warning');
+        }
+    }
+
+    /* ── Đóng modal khi click ngoài ── */
+    document.getElementById('rejectModal').addEventListener('click', function(e) {
+        if (e.target === this) closeRejectModal();
+    });
+
+    /* ── Init ── */
+    document.addEventListener('DOMContentLoaded', () => {
+        loadStats();
+        initDonutMonths();
+        initLateMonths();
+        loadLeaveTable();
+        loadHrEmployees();
+        loadHrPayslips();
+    });
+</script>
+
+</body>
+</html>

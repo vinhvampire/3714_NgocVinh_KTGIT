@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/dashboard-layout :: html(content=~{::page-content}, styles=~{dashboard/hr :: custom-styles}, scripts=~{::custom-scripts})}"
+      lang="vi">
+<head>
+    <title>HR - Nhóm</title>
+</head>
+<body>
+
+<th:block th:fragment="page-content">
+
+    <div class="hr-banner">
+        <div class="hb-left">
+            <h2><i class="fa-solid fa-people-group" style="margin-right:8px;opacity:.8"></i>Quản lý nhóm / tổ</h2>
+            <p>Gán nhóm theo phòng ban.</p>
+            <div class="hb-date" id="dateTime">...</div>
+        </div>
+    </div>
+
+    <th:block th:replace="~{fragments/hr-subnav :: subnav}"></th:block>
+    <th:block th:replace="~{fragments/hr-org-subnav :: org-subnav}"></th:block>
+
+    <div class="g2" style="align-items:start">
+        <div class="card">
+            <div class="card-hd">
+                <div class="card-title"><i class="fa-solid fa-plus" style="color:var(--hr);margin-right:6px"></i>Thêm nhóm</div>
+            </div>
+            <form id="formAddNhom">
+                <label class="modal-sub" style="display:block;margin-bottom:6px">Tên nhóm</label>
+                <input type="text" class="modal-textarea" id="tenNhom" required style="margin-bottom:10px;width:100%;box-sizing:border-box">
+                <label class="modal-sub" style="display:block;margin-bottom:6px">Thuộc phòng ban</label>
+                <select class="modal-textarea" id="selectPhongBan" required style="margin-bottom:14px;width:100%;box-sizing:border-box">
+                    <option value="" disabled selected>— Chọn phòng ban —</option>
+                </select>
+                <button type="submit" class="btn-confirm-reject"
+                        style="background:var(--hr);color:#fff;padding:10px 14px;font-size:12px;border-radius:8px;border:none;cursor:pointer;width:100%">
+                    Lưu nhóm
+                </button>
+            </form>
+        </div>
+        <div class="card">
+            <div class="card-hd">
+                <div class="card-title"><i class="fa-solid fa-table-list" style="color:var(--hr);margin-right:6px"></i>Danh sách</div>
+            </div>
+            <table class="rank-table" style="width:100%">
+                <thead>
+                <tr><th>Mã</th><th>Tên nhóm</th><th>Phòng ban</th><th style="min-width:120px">Thao tác</th></tr>
+                </thead>
+                <tbody id="tableBody">
+                <tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>Đang tải...</p></div></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="editNhomModal">
+        <div class="modal-box" style="max-width:420px">
+            <div class="modal-title"><i class="fa-solid fa-pen" style="color:var(--hr);margin-right:6px"></i>Sửa nhóm</div>
+            <input type="hidden" id="edit-nh-id">
+            <label class="modal-sub" style="display:block;margin-bottom:4px">Tên nhóm</label>
+            <input type="text" class="modal-textarea" id="edit-nh-ten" style="margin-bottom:10px;width:100%;box-sizing:border-box">
+            <label class="modal-sub" style="display:block;margin-bottom:4px">Thuộc phòng ban</label>
+            <select class="modal-textarea" id="edit-nh-pb" style="margin-bottom:14px;width:100%;box-sizing:border-box"></select>
+            <div class="modal-footer" style="display:flex;gap:10px;justify-content:flex-end">
+                <button type="button" class="btn-cancel" onclick="closeEditNhom()">Hủy</button>
+                <button type="button" class="btn-confirm-reject" style="background:var(--hr);color:#fff;padding:8px 14px;border:none;border-radius:8px;cursor:pointer" onclick="saveEditNhom()">Lưu</button>
+            </div>
+        </div>
+    </div>
+
+</th:block>
+
+<script th:fragment="custom-scripts">
+    function tick() {
+        const d = new Date();
+        const days = ['Chủ nhật','Thứ hai','Thứ ba','Thứ tư','Thứ năm','Thứ sáu','Thứ bảy'];
+        document.getElementById('dateTime').textContent = days[d.getDay()] + ', ' +
+            String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear() +
+            ' — ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    }
+    async function apiFetch(url, options = {}) {
+        const response = await fetch(url, { headers: getAuthHeaders(), ...options });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        return response;
+    }
+    async function loadData() {
+        const tbody = document.getElementById('tableBody');
+        const sel = document.getElementById('selectPhongBan');
+        try {
+            const pbs = await (await apiFetch('/api/organizations/phong-ban')).json();
+            while (sel.options.length > 1) sel.remove(1);
+            pbs.forEach(pb => {
+                const o = document.createElement('option');
+                o.value = pb.id;
+                o.textContent = pb.tenPhongBan;
+                sel.appendChild(o);
+            });
+            const nhoms = await (await apiFetch('/api/organizations/nhom')).json();
+            if (!nhoms.length) {
+                tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><p>Chưa có nhóm</p></div></td></tr>';
+                return;
+            }
+            tbody.innerHTML = nhoms.map(n => {
+                const pbId = n.phongBan && n.phongBan.id ? n.phongBan.id : '';
+                return `<tr>
+                    <td><strong>${n.id}</strong></td>
+                    <td>${n.tenNhom}</td>
+                    <td>${n.phongBan ? n.phongBan.tenPhongBan : '—'}</td>
+                    <td>
+                        <button type="button" class="qa-approve" style="font-size:11px;padding:4px 8px" onclick='openEditNhom(${JSON.stringify(n.id)}, ${JSON.stringify(n.tenNhom)}, ${JSON.stringify(pbId)})'>Sửa</button>
+                        <button type="button" class="qa-reject" style="font-size:11px;padding:4px 8px" onclick='deleteNhom(${JSON.stringify(n.id)})'>Xóa</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        } catch (e) {
+            tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><p>Lỗi tải dữ liệu</p></div></td></tr>';
+        }
+    }
+    async function openEditNhom(id, ten, phongBanId) {
+        document.getElementById('edit-nh-id').value = id;
+        document.getElementById('edit-nh-ten').value = ten || '';
+        const sel = document.getElementById('edit-nh-pb');
+        sel.innerHTML = '';
+        const pbs = await (await apiFetch('/api/organizations/phong-ban')).json();
+        pbs.forEach(pb => sel.appendChild(new Option(pb.tenPhongBan, pb.id)));
+        if (phongBanId) sel.value = phongBanId;
+        document.getElementById('editNhomModal').classList.add('show');
+    }
+    function closeEditNhom() {
+        document.getElementById('editNhomModal').classList.remove('show');
+    }
+    async function saveEditNhom() {
+        const id = document.getElementById('edit-nh-id').value;
+        const tenNhom = document.getElementById('edit-nh-ten').value.trim();
+        const pb = document.getElementById('edit-nh-pb').value;
+        if (!tenNhom || !pb) { toast('Tên và phòng ban là bắt buộc', 'warning'); return; }
+        try {
+            await apiFetch('/api/organizations/nhom/' + encodeURIComponent(id), {
+                method: 'PUT',
+                body: JSON.stringify({ tenNhom, phongBan: { id: pb } })
+            });
+            toast('Đã cập nhật nhóm', 'success');
+            closeEditNhom();
+            await loadData();
+        } catch (e) {
+            toast('Cập nhật thất bại', 'warning');
+        }
+    }
+    async function deleteNhom(id) {
+        if (!confirm('Xóa nhóm ' + id + '?')) return;
+        try {
+            await apiFetch('/api/organizations/nhom/' + encodeURIComponent(id), { method: 'DELETE' });
+            toast('Đã xóa', 'success');
+            await loadData();
+        } catch (e) {
+            toast('Không xóa được', 'warning');
+        }
+    }
+    document.getElementById('formAddNhom').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        try {
+            await apiFetch('/api/organizations/nhom', {
+                method: 'POST',
+                body: JSON.stringify({
+                    tenNhom: document.getElementById('tenNhom').value,
+                    phongBan: { id: document.getElementById('selectPhongBan').value }
+                })
+            });
+            toast('Đã thêm nhóm', 'success');
+            document.getElementById('tenNhom').value = '';
+            await loadData();
+        } catch (err) {
+            toast('Không thêm được', 'warning');
+        }
+    });
+    document.addEventListener('DOMContentLoaded', () => { tick(); loadData(); });
+</script>
+
+</body>
+</html>

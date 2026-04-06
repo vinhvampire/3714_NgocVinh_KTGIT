@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<body>
+
+<th:block th:fragment="subnav">
+    <style>
+        .hr-subnav {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+        .hr-subnav a {
+            padding: 8px 12px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            text-decoration: none;
+            font-weight: 800;
+            font-size: 12px;
+            color: var(--txt2);
+            background: #fff;
+            transition: all .18s;
+        }
+        .hr-subnav a:hover {
+            border-color: var(--hr);
+            color: var(--hr);
+            background: var(--hr-s);
+        }
+        .hr-subnav a.active {
+            border-color: var(--hr);
+            color: var(--hr);
+            background: var(--hr-s);
+        }
+    </style>
+
+    <nav class="hr-subnav" aria-label="HR sub-navigation">
+        <a href="/dashboard/hr/employees"
+           th:classappend="${currentUri != null && #strings.contains(currentUri, '/dashboard/hr/employees') ? 'active' : ''}">
+            Nhân viên
+        </a>
+        <a href="/dashboard/hr/attendance"
+           th:classappend="${#strings.contains(currentUri, '/dashboard/hr/attendance') ? 'active' : ''}">
+            Chấm công
+        </a>
+        <a href="/dashboard/hr/leaves"
+           th:classappend="${#strings.contains(currentUri, '/dashboard/hr/leaves') ? 'active' : ''}">
+            Đơn phép
+        </a>
+        <a href="/dashboard/hr/payroll"
+           th:classappend="${#strings.contains(currentUri, '/dashboard/hr/payroll') ? 'active' : ''}">
+            Lương
+        </a>
+        <a href="/dashboard/hr/organization"
+           th:classappend="${currentUri != null && (#strings.contains(currentUri, '/dashboard/hr/organization') || #strings.contains(currentUri, '/dashboard/hr/org/')) ? 'active' : ''}">
+            Tổ chức
+        </a>
+        <a href="/dashboard/hr/decisions"
+           th:classappend="${currentUri != null && #strings.contains(currentUri, '/dashboard/hr/decisions') ? 'active' : ''}">
+            Quyết định
+        </a>
+        <a href="/dashboard/hr/recruitment"
+           th:classappend="${#strings.contains(currentUri, '/dashboard/hr/recruitment') ? 'active' : ''}">
+            Tuyển dụng
+        </a>
+    </nav>
+</th:block>
+
+</body>
+</html>
+

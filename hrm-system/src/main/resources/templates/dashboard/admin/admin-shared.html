@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<th:block th:fragment="styles">
+    <style>
+        :root {
+            --adm:   #6366F1;
+            --adm-d: #4F46E5;
+            --adm-s: #EEF2FF;
+        }
+        .admin-banner {
+            background: linear-gradient(135deg, var(--adm) 0%, var(--adm-d) 100%);
+            border-radius: var(--radius); padding: 22px 28px;
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 24px; position: relative; overflow: hidden;
+        }
+        .admin-banner::before {
+            content: ''; position: absolute; top: -40px; right: -20px;
+            width: 160px; height: 160px; background: rgba(255,255,255,.06); border-radius: 50%;
+        }
+        .admin-banner::after {
+            content: ''; position: absolute; bottom: -50px; right: 80px;
+            width: 110px; height: 110px; background: rgba(255,255,255,.04); border-radius: 50%;
+        }
+        .ab-left h2 { font-size: 19px; font-weight: 800; color: #fff; margin-bottom: 4px; }
+        .ab-left p  { font-size: 13px; color: rgba(255,255,255,.75); font-weight: 500; }
+        .ab-date    { font-size: 12px; color: rgba(255,255,255,.6); margin-top: 8px; font-weight: 600; }
+        .ab-right { display: flex; gap: 10px; z-index: 1; flex-wrap: wrap; }
+        .ab-pill {
+            display: flex; flex-direction: column; align-items: center;
+            background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
+            border-radius: 10px; padding: 10px 16px; min-width: 76px;
+        }
+        .ab-pill .num { font-size: 22px; font-weight: 800; color: #fff; line-height: 1; }
+        .ab-pill .lbl { font-size: 11px; color: rgba(255,255,255,.75); font-weight: 600; margin-top: 3px; text-align: center; }
+
+        .g4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 24px; }
+        @media (max-width: 1100px) { .g4 { grid-template-columns: repeat(2,1fr); } }
+        .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+        @media (max-width: 900px) { .g2 { grid-template-columns: 1fr; } }
+
+        .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
+        .card-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+        .card-title { font-size: 14px; font-weight: 800; color: var(--txt); }
+        .card-link { font-size: 12px; font-weight: 600; color: var(--adm); text-decoration: none; }
+        .card-link:hover { text-decoration: underline; }
+
+        .kpi-card {
+            background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
+            padding: 18px 20px; display: flex; align-items: center; gap: 14px;
+        }
+        .kpi-icon { width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+        .kpi-lbl { font-size: 12px; font-weight: 600; color: var(--txt2); margin-bottom: 3px; }
+        .kpi-val { font-size: 22px; font-weight: 800; color: var(--txt); line-height: 1.1; }
+        .kpi-sub { font-size: 11px; color: var(--txt2); margin-top: 4px; }
+        .badge { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+
+        .search-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+        .search-input {
+            flex: 1; min-width: 160px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 8px;
+            font-family: 'Nunito', sans-serif; font-size: 13px; color: var(--txt);
+            background: var(--bg); outline: none;
+        }
+        .search-input:focus { border-color: var(--adm); }
+        .filter-select {
+            font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 600; color: var(--txt);
+            border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px;
+            background: var(--bg); cursor: pointer; outline: none;
+        }
+        .btn-add {
+            display: flex; align-items: center; gap: 7px;
+            padding: 8px 16px; border-radius: 8px;
+            background: var(--adm); color: #fff;
+            font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700;
+            border: none; cursor: pointer; transition: all .18s; white-space: nowrap;
+        }
+        .btn-add:hover { background: var(--adm-d); }
+        .acc-table { width: 100%; border-collapse: collapse; }
+        .acc-table th {
+            font-size: 11px; font-weight: 700; color: var(--txt2);
+            text-transform: uppercase; letter-spacing:.04em;
+            padding: 8px 12px; text-align: left;
+            background: var(--bg); border-bottom: 1px solid var(--border);
+        }
+        .acc-table td { padding: 11px 12px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        .acc-table tr:last-child td { border-bottom: none; }
+        .acc-table tr:hover td { background: var(--adm-s); }
+        .role-badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+        .role-director { background: var(--pri-s); color: var(--pri); }
+        .role-hr       { background: var(--inf-s); color: var(--inf); }
+        .role-employee { background: var(--ok-s);  color: var(--ok); }
+        .role-admin    { background: var(--adm-s); color: var(--adm); }
+        .status-toggle {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 12px; font-weight: 700; cursor: pointer;
+            padding: 4px 10px; border-radius: 20px; border: none;
+            font-family: 'Nunito', sans-serif; transition: all .18s;
+        }
+        .status-on  { background: var(--ok-s);  color: var(--ok); }
+        .status-off { background: var(--err-s); color: var(--err); }
+        .action-btn { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; transition: all .18s; }
+        .btn-reset  { background: var(--warn-s); color: var(--warn); margin-right: 4px; }
+        .btn-reset:hover  { background: var(--warn); color: #fff; }
+        .btn-role   { background: var(--inf-s);  color: var(--inf); margin-right: 4px; }
+        .btn-role:hover   { background: var(--inf);  color: #fff; }
+        .btn-assign { background: var(--teal-s); color: var(--teal); margin-right: 4px; }
+        .btn-assign:hover { background: var(--teal); color: #fff; }
+        .btn-delete { background: var(--err-s);  color: var(--err); }
+        .btn-delete:hover { background: var(--err);  color: #fff; }
+
+        .log-list { display: flex; flex-direction: column; gap: 8px; }
+        .log-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; background: var(--bg); }
+        .unassigned-list { display: flex; flex-direction: column; gap: 8px; }
+        .unassigned-item { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 8px; border: 1px dashed var(--border); flex-wrap: wrap; }
+        .ua-av { width: 34px; height: 34px; border-radius: 50%; background: var(--adm-s); color: var(--adm); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; flex-shrink: 0; }
+        .ua-name { font-size: 13px; font-weight: 700; color: var(--txt); }
+        .ua-role { font-size: 11px; color: var(--txt2); margin-top: 2px; }
+        .ua-select { font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 600; color: var(--txt); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; background: #fff; cursor: pointer; outline: none; max-width: 200px; }
+        .btn-assign-small { padding: 5px 12px; border-radius: 6px; background: var(--adm); color: #fff; font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700; border: none; cursor: pointer; margin-left: auto; }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 9000; opacity: 0; pointer-events: none; transition: opacity .2s; }
+        .modal-overlay.show { opacity: 1; pointer-events: all; }
+        .modal-box { background: #fff; border-radius: 14px; padding: 24px; width: 440px; max-width: 92vw; box-shadow: 0 8px 40px rgba(0,0,0,.18); transform: translateY(12px); transition: transform .2s; }
+        .modal-overlay.show .modal-box { transform: translateY(0); }
+        .modal-title { font-size: 15px; font-weight: 800; color: var(--txt); margin-bottom: 16px; }
+        .form-row { margin-bottom: 13px; }
+        .form-label { font-size: 12px; font-weight: 700; color: var(--txt2); margin-bottom: 5px; display: block; }
+        .form-input, .form-select { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-family: 'Nunito', sans-serif; font-size: 13px; color: var(--txt); outline: none; background: var(--bg); box-sizing: border-box; }
+        .form-input:focus, .form-select:focus { border-color: var(--adm); background: #fff; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+        .btn-cancel { padding: 8px 18px; border-radius: 7px; background: var(--bg); border: 1px solid var(--border); font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700; color: var(--txt2); cursor: pointer; }
+        .btn-submit { padding: 8px 20px; border-radius: 7px; background: var(--adm); border: none; font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700; color: #fff; cursor: pointer; }
+        .btn-submit:hover { background: var(--adm-d); }
+
+        .empty-state { text-align: center; padding: 40px; color: var(--txt2); }
+        .empty-state i { font-size: 40px; margin-bottom: 12px; opacity: .3; }
+        .perm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .perm-table th, .perm-table td { padding: 12px; border-bottom: 1px solid var(--border); text-align: left; }
+        .perm-table th { background: var(--bg); font-weight: 800; font-size: 11px; text-transform: uppercase; color: var(--txt2); }
+    </style>
+</th:block>
+</html>

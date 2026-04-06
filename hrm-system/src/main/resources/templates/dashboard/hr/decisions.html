@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/dashboard-layout :: html(content=~{::page-content}, styles=~{dashboard/hr :: custom-styles}, scripts=~{::custom-scripts})}"
+      lang="vi">
+<head>
+    <title>HR - Quyết định</title>
+</head>
+<body>
+
+<th:block th:fragment="page-content">
+
+    <div class="hr-banner">
+        <div class="hb-left">
+            <h2><i class="fa-solid fa-file-signature" style="margin-right:8px;opacity:.8"></i>Ban hành quyết định</h2>
+            <p>Điều chuyển, khen thưởng, kỷ luật, thôi việc — lưu quyết định và lịch sử công tác.</p>
+            <div class="hb-date" id="dateTime">...</div>
+        </div>
+    </div>
+
+    <th:block th:replace="~{fragments/hr-subnav :: subnav}"></th:block>
+
+    <div class="card">
+        <div class="card-hd">
+            <div class="card-title"><i class="fa-solid fa-gavel" style="color:var(--hr);margin-right:6px"></i>Biểu mẫu</div>
+        </div>
+        <form id="formQuyetDinh">
+            <label class="modal-sub" style="display:block;margin-bottom:6px">1. Chọn nhân viên</label>
+            <select class="modal-textarea" id="selectNV" required style="margin-bottom:12px;width:100%;box-sizing:border-box">
+                <option value="">Đang tải...</option>
+            </select>
+            <div class="g2" style="margin-bottom:12px">
+                <div>
+                    <label class="modal-sub" style="display:block;margin-bottom:6px">2. Loại quyết định</label>
+                    <select class="modal-textarea" id="loaiQD" required style="width:100%;box-sizing:border-box" onchange="toggleFields(); generateSoQD();">
+                        <option value="DIEU_CHUYEN">Điều chuyển công tác</option>
+                        <option value="KHEN_THUONG">Khen thưởng</option>
+                        <option value="KY_LUAT">Kỷ luật</option>
+                        <option value="THOI_VIEC">Thôi việc / Sa thải</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="modal-sub" style="display:block;margin-bottom:6px">Số quyết định</label>
+                    <input type="text" class="modal-textarea" id="soQD" required placeholder="VD: QD-2026-001" style="width:100%;box-sizing:border-box">
+                </div>
+            </div>
+            <div id="divDieuChuyen" class="card" style="background:var(--hr-s);margin-bottom:12px;padding:14px">
+                <div class="card-title" style="margin-bottom:10px;color:var(--hr-d)">Thông tin điều chuyển</div>
+                <div class="g2">
+                    <div>
+                        <label class="modal-sub" style="display:block;margin-bottom:6px">Phòng ban mới</label>
+                        <select class="modal-textarea" id="newPB" style="width:100%;box-sizing:border-box"></select>
+                    </div>
+                    <div>
+                        <label class="modal-sub" style="display:block;margin-bottom:6px">Chức vụ mới</label>
+                        <select class="modal-textarea" id="newCV" style="width:100%;box-sizing:border-box"></select>
+                    </div>
+                </div>
+            </div>
+            <div class="g2" style="margin-bottom:12px">
+                <div>
+                    <label class="modal-sub" style="display:block;margin-bottom:6px">Người ký</label>
+                    <input type="text" class="modal-textarea" id="nguoiKy" placeholder="VD: Giám đốc nhân sự" style="width:100%;box-sizing:border-box">
+                </div>
+                <div>
+                    <label class="modal-sub" style="display:block;margin-bottom:6px">Số tiền (nếu có)</label>
+                    <input type="number" class="modal-textarea" id="soTien" min="0" placeholder="VD: 2000000" style="width:100%;box-sizing:border-box">
+                </div>
+            </div>
+            <label class="modal-sub" style="display:block;margin-bottom:6px">Nội dung / lý do</label>
+            <textarea class="modal-textarea" id="noiDung" rows="4" required style="width:100%;box-sizing:border-box;margin-bottom:14px"></textarea>
+            <button type="submit" class="btn-confirm-reject"
+                    style="background:var(--err);color:#fff;padding:12px 16px;font-size:13px;border-radius:8px;border:none;cursor:pointer;width:100%">
+                Ký &amp; ban hành quyết định
+            </button>
+        </form>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+        <div class="card-hd" style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+            <div class="card-title"><i class="fa-solid fa-table-list" style="color:var(--inf);margin-right:6px"></i>Lịch sử quyết định</div>
+            <button type="button" class="btn-confirm-reject"
+                    style="background:var(--inf);color:#fff;padding:8px 12px;font-size:12px;border-radius:8px;border:none;cursor:pointer"
+                    onclick="loadQuyetDinhTable()">
+                Tải lại
+            </button>
+        </div>
+        <table class="rank-table" style="width:100%">
+            <thead>
+            <tr>
+                <th style="width:20px">#</th>
+                <th>Số quyết định</th>
+                <th>Nhân viên</th>
+                <th>Loại</th>
+                <th>Ngày ký</th>
+                <th>Người ký</th>
+                <th>Số tiền</th>
+                <th>Nội dung</th>
+            </tr>
+            </thead>
+            <tbody id="qdTableBody">
+            <tr>
+                <td colspan="8">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-spinner fa-spin"></i>
+                        <p>Đang tải quyết định...</p>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+</th:block>
+
+<script th:fragment="custom-scripts">
+    function tick() {
+        const d = new Date();
+        const days = ['Chủ nhật','Thứ hai','Thứ ba','Thứ tư','Thứ năm','Thứ sáu','Thứ bảy'];
+        document.getElementById('dateTime').textContent = days[d.getDay()] + ', ' +
+            String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear() +
+            ' — ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    }
+
+    async function apiFetch(url, options = {}) {
+        const response = await fetch(url, { headers: getAuthHeaders(), ...options });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        return response;
+    }
+
+    function toggleFields() {
+        const loai = document.getElementById('loaiQD').value;
+        document.getElementById('divDieuChuyen').style.display = (loai === 'DIEU_CHUYEN') ? 'block' : 'none';
+    }
+
+    function generateSoQD() {
+        const loai = document.getElementById('loaiQD').value;
+        const nam = new Date().getFullYear();
+        const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+        let maLoai = 'QD';
+        if (loai === 'DIEU_CHUYEN') maLoai = 'DC';
+        if (loai === 'KHEN_THUONG') maLoai = 'KT';
+        if (loai === 'KY_LUAT') maLoai = 'KL';
+        if (loai === 'THOI_VIEC') maLoai = 'TV';
+        document.getElementById('soQD').value = `${randomNum}/${nam}/${maLoai}-G117`;
+    }
+
+    async function loadData() {
+        const [resNV, resPB, resCV] = await Promise.all([
+            apiFetch('/api/employees'),
+            apiFetch('/api/organizations/phong-ban'),
+            apiFetch('/api/organizations/chuc-vu')
+        ]);
+        const nvs = await resNV.json();
+        const pbs = await resPB.json();
+        const cvs = await resCV.json();
+
+        const selNV = document.getElementById('selectNV');
+        selNV.innerHTML = '<option value="">— Chọn nhân viên —</option>';
+        nvs.forEach(nv => { selNV.innerHTML += `<option value="${nv.id}">${nv.hoTen} (${nv.id})</option>`; });
+
+        const selPB = document.getElementById('newPB');
+        selPB.innerHTML = '';
+        pbs.forEach(pb => { selPB.innerHTML += `<option value="${pb.id}">${pb.tenPhongBan}</option>`; });
+
+        const selCV = document.getElementById('newCV');
+        selCV.innerHTML = '';
+        cvs.forEach(cv => { selCV.innerHTML += `<option value="${cv.id}">${cv.tenChucVu}</option>`; });
+
+        toggleFields();
+        generateSoQD();
+    }
+
+    function formatQdDate(value) {
+        if (!value) return '—';
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) return String(value);
+        return d.toLocaleDateString('vi-VN');
+    }
+
+    function formatQdMoney(value) {
+        if (value === null || value === undefined || value === '') return '—';
+        const n = Number(value);
+        if (Number.isNaN(n)) return '—';
+        return n.toLocaleString('vi-VN') + 'đ';
+    }
+
+    function loaiQdText(loai) {
+        switch ((loai || '').toUpperCase()) {
+            case 'DIEU_CHUYEN': return 'Điều chuyển';
+            case 'KHEN_THUONG': return 'Khen thưởng';
+            case 'KY_LUAT': return 'Kỷ luật';
+            case 'THOI_VIEC': return 'Thôi việc';
+            default: return loai || '—';
+        }
+    }
+
+    async function loadQuyetDinhTable() {
+        const tbody = document.getElementById('qdTableBody');
+        tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>Đang tải quyết định...</p></div></td></tr>';
+        try {
+            const response = await apiFetch('/api/history/quyet-dinh');
+            const rows = await response.json();
+            if (!Array.isArray(rows) || rows.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><i class="fa-solid fa-circle-check" style="color:var(--ok);opacity:.5"></i><p>Chưa có quyết định nào</p></div></td></tr>';
+                return;
+            }
+            tbody.innerHTML = rows.map((r, i) => `
+                <tr>
+                    <td>${i + 1}</td>
+                    <td>${r.soQuyetDinh || '—'}</td>
+                    <td>${r.tenNhanVien ? `${r.tenNhanVien} (${r.nhanVienId || '—'})` : (r.nhanVienId || '—')}</td>
+                    <td>${loaiQdText(r.loaiQuyetDinh)}</td>
+                    <td>${formatQdDate(r.ngayKy)}</td>
+                    <td>${r.nguoiKy || '—'}</td>
+                    <td>${formatQdMoney(r.soTien)}</td>
+                    <td>${r.noiDungQuyetDinh || r.noiDung || '—'}</td>
+                </tr>
+            `).join('');
+        } catch (e) {
+            console.error('loadQuyetDinhTable error:', e);
+            tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><i class="fa-solid fa-triangle-exclamation" style="color:var(--err);opacity:.5"></i><p>Không tải được danh sách quyết định</p></div></td></tr>';
+        }
+    }
+
+    document.getElementById('formQuyetDinh').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const loai = document.getElementById('loaiQD').value;
+        const nguoiKy = (document.getElementById('nguoiKy').value || '').trim();
+        const soTienRaw = document.getElementById('soTien').value;
+        const soTien = soTienRaw === '' ? null : Number(soTienRaw);
+        const qdData = {
+            soQuyetDinh: document.getElementById('soQD').value,
+            loaiQuyetDinh: loai,
+            noiDungQuyetDinh: document.getElementById('noiDung').value,
+            noiDung: document.getElementById('noiDung').value,
+            nguoiKy: nguoiKy || null,
+            soTien: Number.isNaN(soTien) ? null : soTien,
+            nhanVien: { id: document.getElementById('selectNV').value },
+            ngayKy: new Date().toISOString().split('T')[0]
+        };
+        let url = '/api/history/quyet-dinh?';
+        if (loai === 'DIEU_CHUYEN') {
+            url += 'phongBanMoiId=' + encodeURIComponent(document.getElementById('newPB').value)
+                + '&chucVuMoiId=' + encodeURIComponent(document.getElementById('newCV').value);
+        }
+        try {
+            await apiFetch(url, { method: 'POST', body: JSON.stringify(qdData) });
+            toast('Ban hành thành công', 'success');
+            document.getElementById('noiDung').value = '';
+            document.getElementById('soTien').value = '';
+            await loadQuyetDinhTable();
+        } catch (err) {
+            toast('Ban hành thất bại (kiểm tra quyền / dữ liệu)', 'warning');
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        tick();
+        document.getElementById('loaiQD').addEventListener('change', generateSoQD);
+        loadData().catch(() => toast('Lỗi tải danh mục', 'warning'));
+        loadQuyetDinhTable();
+    });
+</script>
+
+</body>
+</html>

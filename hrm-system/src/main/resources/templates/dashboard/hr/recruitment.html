@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/dashboard-layout :: html(content=~{::page-content}, styles=~{dashboard/hr :: custom-styles}, scripts=~{::custom-scripts})}"
+      lang="vi">
+<head>
+    <title>HR - Tuyển dụng</title>
+</head>
+<body>
+
+<th:block th:fragment="page-content">
+
+    <div class="hr-banner">
+        <div class="hb-left">
+            <h2><i class="fa-solid fa-handshake" style="margin-right:8px;opacity:.8"></i>Tuyển dụng</h2>
+            <p>Danh sách ứng viên từ module tuyển dụng (mức cơ bản).</p>
+            <div class="hb-date" id="dateTime">...</div>
+        </div>
+    </div>
+
+    <th:block th:replace="~{fragments/hr-subnav :: subnav}"></th:block>
+
+    <div class="card" style="margin-bottom:16px">
+        <div class="card-title" style="margin-bottom:8px"><i class="fa-solid fa-briefcase" style="color:var(--hr);margin-right:6px"></i>Nghiệp vụ</div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px">
+            <button type="button" class="btn-confirm-reject"
+                    style="background:var(--ok);color:#fff;padding:9px 14px;font-size:12px;border-radius:8px;border:none;cursor:pointer"
+                    onclick="openAddCandidateModal()">
+                <i class="fa-solid fa-user-plus"></i> Thêm ứng viên
+            </button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-hd" style="margin-bottom:12px;flex-wrap:wrap;gap:12px;align-items:center">
+            <div class="card-title"><i class="fa-solid fa-user-tie" style="color:var(--hr);margin-right:6px"></i>Danh sách ứng viên</div>
+            <div class="filter-row" style="margin-bottom:0;flex:1;min-width:200px;justify-content:flex-end">
+                <label>Tháng nộp hồ sơ:</label>
+                <select class="filter-select" id="recruitmentMonthFilter" onchange="loadCandidates()">
+                    <option value="">-- Tất cả --</option>
+                </select>
+            </div>
+            <button class="btn-confirm-reject"
+                    style="background:var(--hr);color:#fff;padding:8px 12px;font-size:12px;border-radius:8px;border:none;cursor:pointer"
+                    onclick="loadCandidates()">
+                Tải lại
+            </button>
+        </div>
+
+        <table class="rank-table" style="width:100%">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Họ tên</th>
+                <th>Email</th>
+                <th>SĐT</th>
+                <th>Vị trí</th>
+                <th>Phòng ban</th>
+                <th>CV</th>
+                <th>Ngày nộp</th>
+                <th>Trạng thái</th>
+                <th style="min-width:200px">Thao tác</th>
+            </tr>
+            </thead>
+            <tbody id="candidateTableBody">
+            <tr>
+                <td colspan="10">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-spinner fa-spin"></i>
+                        <p>Đang tải danh sách ứng viên...</p>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ── Lịch phỏng vấn ── -->
+    <div class="card" style="margin-top:16px;margin-bottom:16px">
+        <div class="card-hd" style="margin-bottom:12px;flex-wrap:wrap;gap:12px;align-items:center">
+            <div class="card-title"><i class="fa-solid fa-calendar-check" style="color:var(--inf);margin-right:6px"></i>Lịch phỏng vấn</div>
+            <button class="btn-confirm-reject"
+                    style="background:var(--hr);color:#fff;padding:8px 12px;font-size:12px;border-radius:8px;border:none;cursor:pointer"
+                    onclick="loadInterviews()">
+                Làm mới
+            </button>
+        </div>
+
+        <table class="rank-table" style="width:100%">
+            <thead>
+            <tr>
+                <th>Ứng viên</th>
+                <th>Vị trí</th>
+                <th>Thời gian</th>
+                <th>Địa điểm</th>
+                <th>Người PV</th>
+                <th>Ghi chú</th>
+                <th>Trạng thái UV</th>
+            </tr>
+            </thead>
+            <tbody id="interviewTableBody">
+            <tr>
+                <td colspan="7">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-spinner fa-spin"></i>
+                        <p>Đang tải lịch phỏng vấn...</p>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="modal-overlay" id="addCandidateModal">
+        <div class="modal-box" style="max-width:440px">
+            <div class="modal-title"><i class="fa-solid fa-id-card" style="color:var(--hr);margin-right:6px"></i>Thêm hồ sơ ứng viên</div>
+            <label class="modal-sub" style="display:block;margin-bottom:4px">Họ tên</label>
+            <input id="cand-name" class="modal-textarea" style="margin-bottom:8px;width:100%;box-sizing:border-box">
+            <label class="modal-sub" style="display:block;margin-bottom:4px">Email</label>
+            <input id="cand-email" type="email" class="modal-textarea" style="margin-bottom:8px;width:100%;box-sizing:border-box">
+            <label class="modal-sub" style="display:block;margin-bottom:4px">Số điện thoại</label>
+            <input id="cand-phone" class="modal-textarea" style="margin-bottom:8px;width:100%;box-sizing:border-box">
+            <label class="modal-sub" style="display:block;margin-bottom:4px">Link CV (Google Drive/Dropbox/...)</label>
+            <input id="cand-cv" class="modal-textarea" placeholder="https://..." style="margin-bottom:8px;width:100%;box-sizing:border-box">
+            <label class="modal-sub" style="display:block;margin-bottom:4px">Ứng tuyển theo yêu cầu (tùy chọn)</label>
+            <select id="cand-req" class="modal-textarea" style="margin-bottom:14px;width:100%;box-sizing:border-box">
+                <option value="">— Không gán —</option>
+            </select>
+            <div class="modal-footer" style="display:flex;gap:10px;justify-content:flex-end">
+                <button type="button" class="btn-cancel" onclick="closeAddCandidateModal()">Hủy</button>
+                <button type="button" class="btn-confirm-reject" style="background:var(--hr);color:#fff;padding:8px 14px;border:none;border-radius:8px;cursor:pointer" onclick="submitNewCandidate()">Lưu</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="interviewModal">
+        <div class="modal-box" style="max-width:440px">
+            <div class="modal-title"><i class="fa-solid fa-calendar-check" style="color:var(--inf);margin-right:6px"></i>Lịch phỏng vấn</div>
+            <input type="hidden" id="iv-cand-id">
+            <label class="modal-sub" style="display:block;margin-bottom:4px">Thời gian</label>
+            <input id="iv-time" type="datetime-local" class="modal-textarea" style="margin-bottom:8px;width:100%;box-sizing:border-box">
+            <label class="modal-sub" style="display:block;margin-bottom:4px">Địa điểm</label>
+            <input id="iv-place" class="modal-textarea" placeholder="Phòng họp / Online" style="margin-bottom:8px;width:100%;box-sizing:border-box">
+            <label class="modal-sub" style="display:block;margin-bottom:4px">Người phỏng vấn</label>
+            <input id="iv-host" class="modal-textarea" placeholder="Họ tên hoặc mã NV" style="margin-bottom:8px;width:100%;box-sizing:border-box">
+            <label class="modal-sub" style="display:block;margin-bottom:4px">Ghi chú</label>
+            <textarea id="iv-note" class="modal-textarea" rows="2" style="margin-bottom:14px;width:100%;box-sizing:border-box"></textarea>
+            <div class="modal-footer" style="display:flex;gap:10px;justify-content:flex-end">
+                <button type="button" class="btn-cancel" onclick="closeInterviewModal()">Hủy</button>
+                <button type="button" class="btn-confirm-reject" style="background:var(--inf);color:#fff;padding:8px 14px;border:none;border-radius:8px;cursor:pointer" onclick="submitInterview()">Lên lịch</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="candidateDetailModal">
+        <div class="modal-box" style="max-width:720px">
+            <div class="modal-title"><i class="fa-solid fa-address-card" style="color:var(--hr);margin-right:6px"></i>Chi tiết hồ sơ ứng viên</div>
+            <div id="candidateDetailBody" class="modal-sub" style="margin-bottom:12px">Đang tải...</div>
+            <div class="modal-footer" style="display:flex;gap:10px;justify-content:flex-end">
+                <button type="button" class="btn-cancel" onclick="closeCandidateDetailModal()">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+</th:block>
+
+<script th:fragment="custom-scripts">
+    function tick() {
+        const d = new Date();
+        const days = ['Chủ nhật','Thứ hai','Thứ ba','Thứ tư','Thứ năm','Thứ sáu','Thứ bảy'];
+        const str = days[d.getDay()] + ', ' +
+            String(d.getDate()).padStart(2,'0') + '/' +
+            String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear() +
+            ' — ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+        document.getElementById('dateTime').textContent = str;
+    }
+
+    async function apiFetch(url, options = {}) {
+        const defaultOptions = { headers: getAuthHeaders(), ...options };
+        const response = await fetch(url, defaultOptions);
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        return response;
+    }
+
+    async function apiFetchJson(url, options = {}) {
+        return (await apiFetch(url, options)).json();
+    }
+
+    function initRecruitmentMonths() {
+        const sel = document.getElementById('recruitmentMonthFilter');
+        const now = new Date();
+        sel.innerHTML = `<option value="">-- Tất cả --</option>`;
+        for (let i = 0; i < 4; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+            const lbl = `Tháng ${d.getMonth()+1}/${d.getFullYear()}`;
+            sel.appendChild(new Option(lbl, val));
+        }
+        sel.selectedIndex = 1;
+    }
+
+    let __candidates = [];
+
+    function esc(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function formatInterviewTime(val) {
+        if (!val) return '—';
+        const d = new Date(val);
+        if (!isNaN(d.getTime())) return d.toLocaleString('vi-VN');
+        // fallback parse dd/MM/yyyy HH:mm (đúng format API)
+        const m = String(val).match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})$/);
+        if (!m) return val;
+        const dd = Number(m[1]);
+        const mm = Number(m[2]) - 1;
+        const yyyy = Number(m[3]);
+        const HH = Number(m[4]);
+        const mi = Number(m[5]);
+        const dt = new Date(yyyy, mm, dd, HH, mi);
+        if (isNaN(dt.getTime())) return val;
+        return dt.toLocaleString('vi-VN');
+    }
+
+    function candidateStatusBadge(raw) {
+        const s = (raw || '').toUpperCase().trim();
+        const map = {
+            'CHO_DUYET':   { cls: 'st-warn', icon: 'fa-clock', label: 'Chờ duyệt' },
+            'DAT':         { cls: 'st-ok',   icon: 'fa-check', label: 'Đạt' },
+            'LOAI':        { cls: 'st-err',  icon: 'fa-xmark', label: 'Loại' },
+            'TRUNG_TUYEN': { cls: 'st-ok',   icon: 'fa-user-check', label: 'Trúng tuyển' },
+        };
+        const m = map[s] || { cls: 'st-inf', icon: 'fa-circle-question', label: raw || '—' };
+        return `<span class="st-badge ${m.cls}"><i class="fa-solid ${m.icon}"></i> ${m.label}</span>`;
+    }
+
+    async function loadCandidates() {
+        const tbody = document.getElementById('candidateTableBody');
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>Đang tải danh sách ứng viên...</p></div></td></tr>`;
+        try {
+            const month = document.getElementById('recruitmentMonthFilter').value;
+            const q = month ? `?month=${encodeURIComponent(month)}` : '';
+            const list = await apiFetchJson('/api/dashboard/hr/recruitment/candidates' + q);
+            __candidates = list || [];
+            if (!list || list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><i class="fa-solid fa-circle-check" style="color:var(--ok);opacity:.5"></i><p>Không có ứng viên trong khoảng đã chọn</p></div></td></tr>`;
+                return;
+            }
+            tbody.innerHTML = list.map(c => {
+                const st = (c.trangThai || '').toUpperCase();
+                const canOnboard = st !== 'TRUNG_TUYEN' && st !== 'LOAI';
+                const cvBtn = c.cvUrl
+                    ? `<a href="${esc(c.cvUrl)}" target="_blank" rel="noopener" class="qa-approve" style="font-size:10px;padding:3px 6px;margin:2px;background:var(--inf);color:#fff;text-decoration:none">Mở CV</a>`
+                    : `<span class="modal-sub">—</span>`;
+                return `
+                <tr>
+                    <td>${c.id ?? '—'}</td>
+                    <td>${c.hoTen ?? '—'}</td>
+                    <td>${c.email || '—'}</td>
+                    <td>${c.soDienThoai || '—'}</td>
+                    <td>${c.viTri || '—'}</td>
+                    <td>${c.phongBan || '—'}</td>
+                    <td>${cvBtn}</td>
+                    <td>${c.ngayNop || '—'}</td>
+                    <td>${candidateStatusBadge(c.trangThai)}</td>
+                    <td style="white-space:normal">
+                        <button type="button" class="qa-approve" style="font-size:10px;padding:3px 6px;margin:2px;background:var(--inf);color:#fff" onclick="openCandidateDetailModal(${c.id})">Chi tiết</button>
+                        <button type="button" class="qa-approve" style="font-size:10px;padding:3px 6px;margin:2px" onclick="openInterviewModal(${c.id})">Lịch PV</button>
+                        <button type="button" class="qa-approve" style="font-size:10px;padding:3px 6px;margin:2px;background:var(--ok);color:#fff" onclick="setCandidateStatus(${c.id}, 'DAT')">Đạt</button>
+                        <button type="button" class="qa-reject" style="font-size:10px;padding:3px 6px;margin:2px" onclick="setCandidateStatus(${c.id}, 'LOAI')">Loại</button>
+                        ${canOnboard ? `<button type="button" class="qa-approve" style="font-size:10px;padding:3px 6px;margin:2px;background:var(--hr);color:#fff" onclick="approveOnboard(${c.id})">Onboard</button>` : ''}
+                        <button type="button" class="qa-reject" style="font-size:10px;padding:3px 6px;margin:2px" onclick="removeCandidate(${c.id})">Xóa</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        } catch (e) {
+            console.error('loadCandidates error:', e);
+            tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-triangle-exclamation" style="color:var(--err);opacity:.5"></i><p>Lỗi tải dữ liệu tuyển dụng</p></div></td></tr>`;
+        }
+    }
+
+    async function loadInterviews() {
+        const tbody = document.getElementById('interviewTableBody');
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>Đang tải lịch phỏng vấn...</p></div></td></tr>`;
+        try {
+            const list = await apiFetchJson('/api/recruitment/interviews');
+            const data = list || [];
+
+            if (!data.length) {
+                tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-circle-check" style="color:var(--ok);opacity:.5"></i><p>Chưa có lịch phỏng vấn</p></div></td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = data.map(iv => {
+                const stBadge = candidateStatusBadge(iv.trangThaiUngVien);
+                return `
+                    <tr>
+                        <td>${esc(iv.tenUngVien)}</td>
+                        <td>${esc(iv.viTriUngTuyen)}</td>
+                        <td>${esc(formatInterviewTime(iv.thoiGian))}</td>
+                        <td>${esc(iv.diaDiem)}</td>
+                        <td>${esc(iv.nguoiPhongVan)}</td>
+                        <td>${esc(iv.ghiChu)}</td>
+                        <td>${stBadge}</td>
+                    </tr>
+                `;
+            }).join('');
+        } catch (e) {
+            console.error('loadInterviews error:', e);
+            tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-triangle-exclamation" style="color:var(--err);opacity:.5"></i><p>Lỗi tải lịch phỏng vấn</p></div></td></tr>`;
+        }
+    }
+
+    async function refreshHiringRequestOptions() {
+        const sel = document.getElementById('cand-req');
+        sel.innerHTML = '<option value="">— Không gán —</option>';
+        try {
+            const reqs = await apiFetchJson('/api/recruitment/all-requests');
+            (reqs || []).forEach(r => {
+                const id = r.idYeuCau || '';
+                const label = (r.viTriCanTuyen || id) + (r.phongBan ? ' — ' + (r.phongBan.tenPhongBan || '') : '');
+                sel.appendChild(new Option(label, id));
+            });
+        } catch (e) { console.warn(e); }
+    }
+
+    function openAddCandidateModal() {
+        refreshHiringRequestOptions();
+        document.getElementById('cand-name').value = '';
+        document.getElementById('cand-email').value = '';
+        document.getElementById('cand-phone').value = '';
+        document.getElementById('cand-cv').value = '';
+        document.getElementById('cand-req').selectedIndex = 0;
+        document.getElementById('addCandidateModal').classList.add('show');
+    }
+    function closeAddCandidateModal() {
+        document.getElementById('addCandidateModal').classList.remove('show');
+    }
+
+    async function submitNewCandidate() {
+        const hoTen = document.getElementById('cand-name').value.trim();
+        const email = document.getElementById('cand-email').value.trim();
+        const soDienThoai = document.getElementById('cand-phone').value.trim();
+        const cvUrl = document.getElementById('cand-cv').value.trim();
+        const yc = document.getElementById('cand-req').value;
+        if (!hoTen || !email) {
+            toast('Họ tên và email là bắt buộc', 'warning');
+            return;
+        }
+        const body = { hoTen, email, soDienThoai, cvUrl, trangThai: 'CHO_DUYET' };
+        if (yc) body.yeuCauTuyenDung = { idYeuCau: yc };
+        try {
+            const res = await fetch('/api/recruitment/apply', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify(body)
+            });
+            const text = await res.text();
+            if (!res.ok) throw new Error(text);
+            toast('Đã thêm ứng viên', 'success');
+            closeAddCandidateModal();
+            await loadCandidates();
+        } catch (e) {
+            toast('Không thêm được ứng viên', 'warning');
+        }
+    }
+
+    async function setCandidateStatus(id, status) {
+        const c = __candidates.find(x => x.id === id);
+        if (!c) return;
+        try {
+            await apiFetch('/api/recruitment/candidate/' + id, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    hoTen: c.hoTen,
+                    email: c.email || '',
+                    soDienThoai: c.soDienThoai || '',
+                    cvUrl: c.cvUrl || '',
+                    trangThai: status
+                })
+            });
+            toast('Đã cập nhật trạng thái', 'success');
+            await loadCandidates();
+        } catch (e) {
+            toast('Cập nhật thất bại', 'warning');
+        }
+    }
+
+    async function approveOnboard(id) {
+        if (!confirm('Tạo nhân viên mới từ ứng viên này?')) return;
+        try {
+            const res = await fetch('/api/recruitment/approve/' + id, { method: 'POST', headers: getAuthHeaders() });
+            const text = await res.text();
+            if (!res.ok) throw new Error(text);
+            toast(text || 'Onboard thành công', 'success');
+            await loadCandidates();
+        } catch (e) {
+            toast('Onboard thất bại', 'warning');
+        }
+    }
+
+    async function removeCandidate(id) {
+        if (!confirm('Xóa hồ sơ ứng viên #' + id + '?')) return;
+        try {
+            await apiFetch('/api/recruitment/candidate/' + id, { method: 'DELETE' });
+            toast('Đã xóa', 'success');
+            await loadCandidates();
+        } catch (e) {
+            toast('Xóa thất bại', 'warning');
+        }
+    }
+
+    function openInterviewModal(candidateId) {
+        document.getElementById('iv-cand-id').value = candidateId;
+        document.getElementById('iv-time').value = '';
+        document.getElementById('iv-place').value = '';
+        document.getElementById('iv-host').value = '';
+        document.getElementById('iv-note').value = '';
+        document.getElementById('interviewModal').classList.add('show');
+    }
+    function closeInterviewModal() {
+        document.getElementById('interviewModal').classList.remove('show');
+    }
+
+    async function submitInterview() {
+        const id = Number(document.getElementById('iv-cand-id').value);
+        const dt = document.getElementById('iv-time').value;
+        if (!dt) {
+            toast('Chọn thời gian phỏng vấn', 'warning');
+            return;
+        }
+        let thoiGian = dt;
+        if (thoiGian.length === 16) thoiGian += ':00';
+        const payload = {
+            thoiGian,
+            diaDiem: document.getElementById('iv-place').value.trim() || '—',
+            ghiChu: document.getElementById('iv-note').value.trim(),
+            nguoiPhongVan: document.getElementById('iv-host').value.trim() || 'HR',
+            ungVien: { id }
+        };
+        try {
+            const res = await fetch('/api/recruitment/schedule-interview', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify(payload)
+            });
+            const text = await res.text();
+            if (!res.ok) throw new Error(text);
+            toast(text || 'Đã lên lịch', 'success');
+            closeInterviewModal();
+        } catch (e) {
+            toast('Lên lịch thất bại', 'warning');
+        }
+    }
+
+    function closeCandidateDetailModal() {
+        document.getElementById('candidateDetailModal').classList.remove('show');
+    }
+
+    async function openCandidateDetailModal(id) {
+        const body = document.getElementById('candidateDetailBody');
+        body.innerHTML = 'Đang tải...';
+        document.getElementById('candidateDetailModal').classList.add('show');
+        try {
+            const data = await apiFetchJson('/api/recruitment/candidate/' + id);
+            const req = data.yeuCauTuyenDung || {};
+            const interviews = Array.isArray(data.interviews) ? data.interviews : [];
+            const cvBlock = data.cvUrl
+                ? `<a href="${esc(data.cvUrl)}" target="_blank" rel="noopener">Mở link CV</a>`
+                : 'Chưa có';
+            const interviewRows = interviews.length
+                ? interviews.map(iv => `<li>${iv.thoiGian ? new Date(iv.thoiGian).toLocaleString('vi-VN') : '—'} - ${esc(iv.diaDiem || '—')} - ${esc(iv.nguoiPhongVan || '—')}</li>`).join('')
+                : '<li>Chưa có lịch phỏng vấn</li>';
+
+            body.innerHTML = `
+                <div class="g2" style="gap:12px">
+                    <div><b>Họ tên:</b> ${esc(data.hoTen || '—')}</div>
+                    <div><b>ID:</b> ${esc(data.id || '—')}</div>
+                    <div><b>Email:</b> ${esc(data.email || '—')}</div>
+                    <div><b>SĐT:</b> ${esc(data.soDienThoai || '—')}</div>
+                    <div><b>Trạng thái:</b> ${candidateStatusBadge(data.trangThai)}</div>
+                    <div><b>Ngày nộp:</b> ${data.ngayNop ? new Date(data.ngayNop).toLocaleString('vi-VN') : '—'}</div>
+                    <div><b>Vị trí:</b> ${esc(req.viTriCanTuyen || '—')}</div>
+                    <div><b>Phòng ban:</b> ${esc(req.phongBan?.tenPhongBan || '—')}</div>
+                    <div style="grid-column:1/-1"><b>CV:</b> ${cvBlock}</div>
+                    <div style="grid-column:1/-1"><b>Lịch phỏng vấn:</b><ul style="margin:6px 0 0 16px">${interviewRows}</ul></div>
+                </div>
+            `;
+        } catch (e) {
+            body.innerHTML = '<span style="color:var(--err)">Không tải được chi tiết hồ sơ ứng viên.</span>';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        tick();
+        initRecruitmentMonths();
+        loadCandidates();
+        loadInterviews();
+    });
+</script>
+
+</body>
+</html>
+
